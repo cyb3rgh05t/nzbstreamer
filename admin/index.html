@@ -1087,6 +1087,24 @@ health'></textarea>
         </div>
       </form>
 
+      <section class="save-result hidden" id="saveResult" aria-labelledby="saveResultTitle">
+        <div class="save-result-heading">
+          <i data-lucide="circle-check" aria-hidden="true"></i>
+          <div>
+            <h2 id="saveResultTitle">Settings saved</h2>
+            <p id="saveResultMessage"></p>
+          </div>
+        </div>
+        <div class="save-result-url" id="saveResultUrlRow">
+          <label for="savedManifestUrl">Manifest URL</label>
+          <div class="save-result-copy-row">
+            <input id="savedManifestUrl" type="text" readonly spellcheck="false" autocomplete="off" />
+            <button type="button" class="secondary" id="copySavedManifest"><i data-lucide="copy" aria-hidden="true"></i>Copy URL</button>
+          </div>
+          <span id="savedManifestStatus" class="copy-status" role="status"></span>
+        </div>
+      </section>
+
       <div class="manifest-row">
         <div class="manifest-info">
           <strong>Manifest URL</strong>

@@ -13,6 +13,13 @@
   let activeSettingsView = settingsSections[0];
   const manifestDescription = document.getElementById("manifestDescription");
   const saveStatus = document.getElementById("saveStatus");
+  const saveResult = document.getElementById("saveResult");
+  const saveResultTitle = document.getElementById("saveResultTitle");
+  const saveResultMessage = document.getElementById("saveResultMessage");
+  const saveResultUrlRow = document.getElementById("saveResultUrlRow");
+  const savedManifestUrl = document.getElementById("savedManifestUrl");
+  const savedManifestStatus = document.getElementById("savedManifestStatus");
+  const copySavedManifest = document.getElementById("copySavedManifest");
   const copyManifestButton = document.getElementById("copyManifest");
   const copyManifestStatus = document.getElementById("copyManifestStatus");
   const stremioWebButton = document.getElementById("installStremioWeb");
@@ -391,6 +398,22 @@
     } else {
       syncSaveGuard();
     }
+  }
+
+  function hideSaveResult() {
+    saveResult.classList.add("hidden");
+    savedManifestStatus.textContent = "";
+  }
+
+  function showSaveResult(title, message, url) {
+    saveResultTitle.textContent = title;
+    saveResultMessage.textContent = message;
+    savedManifestUrl.value = url || "";
+    saveResultUrlRow.classList.toggle("hidden", !url);
+    savedManifestStatus.textContent = "";
+    saveStatus.textContent = "";
+    saveResult.classList.remove("hidden");
+    saveResult.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 
   function parseBool(value) {
@@ -1529,11 +1552,12 @@
     authError.classList.add("hidden");
     markLoading(true);
     saveStatus.textContent = "";
+    hideSaveResult();
 
     try {
       const data = await apiRequest("/admin/api/config");
       const values = data.values || {};
-      lastGlobalValues = values; // cached so profile mode can show inherited defaults
+      lastGlobalValues = { ...values }; // cached so profile mode can show inherited defaults
       loadedSortMode = (values.NZB_SORT_MODE || "quality_then_size")
         .toString()
         .trim()
@@ -1555,6 +1579,7 @@
         } else {
           streamProtectionSelect.value = "health-check";
         }
+        lastGlobalValues.NZB_STREAM_PROTECTION = streamProtectionSelect.value;
       }
       // Backward compat: derive NZB_DEDUP_MODE from legacy NZB_DEDUP_ENABLED
       // if the new key isn't set. Users who had dedupe enabled (or unset) get
@@ -1571,6 +1596,7 @@
           legacyDedupeRaw,
         );
         dedupeModeSelect.value = legacyDedupeOff ? "off" : "standard";
+        lastGlobalValues.NZB_DEDUP_MODE = dedupeModeSelect.value;
       }
       refreshFormBuilders();
       configSection.classList.remove("hidden");
@@ -1861,6 +1887,20 @@
     } catch (error) {
       console.error("Failed to copy manifest URL", error);
       showCopyFeedback("Copy failed");
+    }
+  }
+
+  async function copySavedManifestUrl() {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(savedManifestUrl.value);
+      } else {
+        savedManifestUrl.select();
+        if (!document.execCommand("copy")) throw new Error("Copy failed");
+      }
+      savedManifestStatus.textContent = "Copied!";
+    } catch (error) {
+      savedManifestStatus.textContent = "Copy failed";
     }
   }
 
@@ -2387,6 +2427,7 @@
   async function saveConfiguration(event) {
     event.preventDefault();
     saveStatus.textContent = "";
+    hideSaveResult();
     if (currentProfileSlug !== null) {
       return saveProfileConfiguration();
     }
@@ -2413,11 +2454,10 @@
       const manifestUrl = result?.manifestUrl || currentManifestUrl || "";
       if (manifestUrl) updateManifestLink(manifestUrl);
       const portChanged = Boolean(result?.portChanged);
-      const manifestNote = manifestUrl ? `Manifest URL: ${manifestUrl}. ` : "";
       const reloadNote = portChanged
         ? "Settings applied and the addon restarted on the new port. All cached results cleared."
         : "Settings applied instantly — no restart needed. All cached results cleared.";
-      saveStatus.textContent = `${manifestNote}${reloadNote}`.trim();
+      showSaveResult("Settings saved", reloadNote, manifestUrl);
     } catch (error) {
       saveStatus.textContent = `Error: ${error.message}`;
     } finally {
@@ -2570,6 +2610,7 @@
   }
 
   function enterDefaultMode() {
+    hideSaveResult();
     currentProfileSlug = null;
     syncSwitcherToCurrent();
     if (profileEditRow) profileEditRow.classList.add("hidden");
@@ -2582,7 +2623,7 @@
     // Re-enable the per-profile section fields we disabled; shared sections are restored
     // by removing profile-mode + refreshFormBuilders() below.
     profileSections.forEach((s) => {
-      s.classList.remove("profile-inherit");
+      s.classList.remove("profile-inherit", "section-collapsed");
       s.querySelectorAll(
         "input[name], select[name], textarea[name], button",
       ).forEach((el) => {
@@ -2597,6 +2638,7 @@
   }
 
   function enterProfileMode(profile, isNew) {
+    hideSaveResult();
     currentProfileSlug = isNew ? "__new__" : profile.slug;
     syncSwitcherToCurrent();
     ensureOverrideToggles();
@@ -2737,20 +2779,15 @@
         body: JSON.stringify(body),
       });
       const saved = result && result.profile;
-      // Show this profile's own manifest URL at the bottom too (like the default
-      // profile does), so it's where users expect it — not only the top hint.
       const savedSlug = saved && saved.slug;
       const profileManifestUrl =
-        savedSlug && currentManifestUrl
+        result?.manifestUrl ||
+        (savedSlug && currentManifestUrl
           ? currentManifestUrl.replace(
               /\/manifest\.json([^/]*)$/,
               `/${savedSlug}/manifest.json$1`,
             )
-          : "";
-      const urlNote = profileManifestUrl
-        ? `Manifest URL: ${profileManifestUrl}. `
-        : "";
-      saveStatus.textContent = `${urlNote}Profile "${name}" saved — settings apply instantly, no restart needed.`;
+          : "");
       if (savedSlug) currentProfileSlug = savedSlug;
       await loadProfiles();
       const justSaved =
@@ -2759,6 +2796,11 @@
           : null;
       if (justSaved) enterProfileMode(justSaved, false);
       else renderProfileTabs();
+      showSaveResult(
+        `Profile "${name}" saved`,
+        "Settings apply instantly — no restart needed.",
+        profileManifestUrl,
+      );
     } catch (error) {
       saveStatus.textContent = `Error: ${error.message}`;
     } finally {
@@ -2807,6 +2849,8 @@
   if (copyManifestButton) {
     copyManifestButton.addEventListener("click", copyManifestUrl);
   }
+  copySavedManifest.addEventListener("click", copySavedManifestUrl);
+  savedManifestUrl.addEventListener("focus", () => savedManifestUrl.select());
   if (stremioWebButton) {
     stremioWebButton.addEventListener("click", openStremioWebInstall);
   }

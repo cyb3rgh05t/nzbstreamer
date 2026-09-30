@@ -772,9 +772,13 @@ adminApiRouter.post("/profiles", (req, res) => {
   try {
     runtimeEnv.updateRuntimeEnv(updates);
     runtimeEnv.applyRuntimeEnv();
+    const baseManifestUrl = computeManifestUrl();
     res.json({
       success: true,
       profile: profileManager.getProfiles().get(newSlug) || null,
+      manifestUrl: baseManifestUrl
+        ? new URL(`${newSlug}/manifest.json`, baseManifestUrl).toString()
+        : "",
     });
   } catch (error) {
     console.error("[ADMIN] Failed to save profile", error);
