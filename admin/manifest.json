@@ -1,12 +1,12 @@
 {
-  "name": "UsenetStreamer Control Panel",
-  "short_name": "UsenetStreamer",
+  "name": "NZBStreamer Control Panel",
+  "short_name": "NZBStreamer",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0b1118",
-  "theme_color": "#0b1118",
-  "description": "Configure UsenetStreamer settings and manage indexers.",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "description": "Configure NZBStreamer settings and manage indexers.",
   "icons": [
     {
       "src": "/assets/icon.png",

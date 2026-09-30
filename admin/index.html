@@ -3,25 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UsenetStreamer Control Panel</title>
+  <title>NZBStreamer Control Panel</title>
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#0b1118" />
+  <meta name="theme-color" content="#000000" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <link rel="apple-touch-icon" href="/assets/icon.png" />
-  <link rel="icon" href="/assets/icon.png" type="image/png" />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="vendor/tom-select/css/tom-select.default.min.css" />
   <link rel="stylesheet" href="styles.css" />
   <style>
     /* Profile switcher — a sibling sub-panel matching the form's .group panels,
        with tabs styled as pill buttons using the shared button language. */
-    .profile-switcher { background: var(--bg-panel); border: 1px solid rgba(86,110,135,0.25); border-radius: var(--radius-md); padding: 1.4rem 1.6rem; margin: 0; display: flex; flex-direction: column; gap: 0.9rem; box-shadow: 0 18px 40px rgba(2,12,24,0.4); }
+    .profile-switcher { background: var(--bg-panel); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin: 0; display: flex; flex-direction: column; gap: 0.65rem; }
     .profile-tabs { display: flex; flex-wrap: wrap; gap: 0.55rem; align-items: center; }
-    .profile-tab { padding: 0.55rem 1.2rem; border-radius: 999px; border: 1px solid var(--border-strong); background: rgba(62,84,110,0.22); color: var(--text-secondary); cursor: pointer; font-size: 0.92rem; font-weight: 600; line-height: 1.2; transition: transform 120ms ease, background 160ms ease, color 160ms ease, border-color 160ms ease, box-shadow 180ms ease; }
-    .profile-tab:hover { background: rgba(62,84,110,0.42); border-color: rgba(95,180,255,0.6); color: var(--text-primary); transform: translateY(-1px); }
-    .profile-tab.active { background: var(--accent-gradient); color: #051521; border-color: transparent; text-shadow: 0 1px 0 rgba(255,255,255,0.35); box-shadow: var(--shadow-lift); }
+    .profile-tab { padding: 0.45rem 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--bg-input); color: var(--text-secondary); cursor: pointer; font-size: 0.88rem; font-weight: 600; line-height: 1.2; transition: background 160ms ease, color 160ms ease, border-color 160ms ease; }
+    .profile-tab:hover { background: var(--cffy-theme-surface-a30); border-color: var(--accent); color: var(--text-primary); }
+    .profile-tab.active { background: var(--cffy-theme-surface-tonal-a20); color: var(--accent); border-color: var(--accent); }
     .profile-tab.active:hover { transform: translateY(-1px); }
-    .profile-tab-add { background: transparent; border: 1.5px dashed rgba(95,120,150,0.7); color: var(--text-secondary); }
-    .profile-tab-add:hover { background: transparent; border-color: rgba(95,180,255,0.6); color: #9fdcff; }
+    .profile-tab-add { background: transparent; border: 1px dashed var(--border-strong); color: var(--text-secondary); }
+    .profile-tab-add:hover { background: transparent; border-color: var(--accent); color: var(--accent); }
     .profile-edit-row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin: 0; }
     .profile-edit-row #profileNameInput { flex: 1 1 220px; min-width: 160px; }
     .profile-inherit { opacity: 0.45; }
@@ -36,19 +37,28 @@
        in "Addon Name") stay global — hide them while editing a profile. */
     #configForm.profile-mode .profile-foreign-field { display: none !important; }
     /* Keep the Save bar reachable instead of buried at the bottom of a long form. */
-    .actions { position: sticky; bottom: 0; background: rgba(11,17,24,0.96); backdrop-filter: blur(4px); padding: 0.85rem 0.25rem; margin-top: 1rem; z-index: 5; border-top: 1px solid rgba(80,140,220,0.18); }
+    .actions { position: sticky; bottom: 0; background: var(--bg-body); padding: 0.75rem 0; margin-top: 0.5rem; z-index: 5; border-top: 1px solid var(--border-soft); }
   </style>
 </head>
 <body>
   <main class="container">
+    <aside class="app-sidebar" aria-label="Control panel navigation">
+      <div class="app-brand"><img class="brand-mark" src="/assets/icon.png" alt="" /><span>NZBStreamer<small>CONTROL PANEL</small></span></div>
+      <nav aria-label="Settings navigation">
+
+        <div id="settingsNav" class="sidebar-links"></div>
+      </nav>
+      <div class="sidebar-footer">
+        <button type="button" id="authSettingsButton" class="sidebar-link" hidden><i data-lucide="lock-keyhole" aria-hidden="true"></i>Admin access</button>
+        <a class="sidebar-help" href="help.html"><i data-lucide="circle-help" aria-hidden="true"></i>Help &amp; Reference</a>
+      </div>
+    </aside>
     <header>
-      <h1>UsenetStreamer Control Panel</h1>
-      <p class="subtitle">Configure addon credentials, NNTP triage settings, and grab the manifest URL without editing environment files by hand.</p>
+      <div class="page-identity"><h1>NZBStreamer</h1><span aria-hidden="true">/</span><strong id="currentViewTitle">Authentication</strong></div>
       <span class="version-badge hidden" id="addonVersionBadge"></span>
-      <a href="help.html" style="align-self:center; display:inline-flex; align-items:center; gap:0.4rem; color:var(--accent); text-decoration:none; font-size:0.88rem; font-weight:600; opacity:0.8; transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">? Help &amp; Reference</a>
     </header>
 
-    <section class="card">
+    <section class="card auth-card">
       <h2>Authentication</h2>
   <p class="hint">Enter your admin token (<code>ADDON_SHARED_SECRET</code>) to access the dashboard. This is the value you set in your Docker/environment config — it cannot be changed here.</p>
       <p class="warning">Treat this token like a password. If someone has both the token and the public addon URL, they can open the admin panel and modify your settings. Passwords and API keys are never visible - they are write-only.</p>
@@ -61,10 +71,6 @@
     </section>
 
     <section class="card hidden" id="configSection">
-      <div class="info-box" id="migrationNotice">
-        <strong>Upgrading from a version before v1.7.6?</strong> The stream token is now separate from the admin token. Your manifest URL has changed — you may need to reinstall the addon in Stremio using the new URL shown after saving.
-        <button type="button" class="dismiss-btn" onclick="this.parentElement.remove()">Dismiss</button>
-      </div>
       <div class="profile-switcher" id="profileSwitcherBar">
         <div class="profile-tabs" id="profileTabs"></div>
         <div class="profile-edit-row hidden" id="profileEditRow">
@@ -222,7 +228,7 @@
         </section>
 
         <section class="group" data-profile-section="Sorting &amp; Filters">
-          <h3>Result Sorting &amp; Filters</h3>
+          <h3>Sorting &amp; Filters</h3>
           <div class="field-grid">
             <div class="sort-order-builder wide-field" data-sort-order-builder="global">
               <span class="field-label">Sorting Priority — Global</span>
@@ -697,7 +703,7 @@ health'></textarea>
                 <span>EXAMPLE</span>
               </div>
               <div class="preview-item">
-                <span class="preview-label" id="previewShortName">UsenetStreamer ✅ ⚡ 4K</span>
+                <span class="preview-label" id="previewShortName">NZBStreamer ✅ ⚡ 4K</span>
                 <div class="preview-desc" id="previewDescription">🎬 Tune Part Two
 ✨ WEB-DL
 🎥 WEB-DL
@@ -1059,7 +1065,7 @@ health'></textarea>
           <h3>Addon Metadata</h3>
           <div class="field-grid">
             <label>Addon Display Name
-              <input name="ADDON_NAME" type="text" placeholder="UsenetStreamer" />
+              <input name="ADDON_NAME" type="text" placeholder="NZBStreamer" />
               <span class="field-hint">Appears in Stremio as the addon title.</span>
             </label>
             <label>Public Base URL
@@ -1094,10 +1100,11 @@ health'></textarea>
         </div>
       </div>
 
-      <p class="support-note">If you like this addon, please consider <a href="https://github.com/sponsors/Sanket9225" target="_blank" rel="noopener">sponsoring on GitHub</a>.</p>
     </section>
   </main>
   <script src="/utils/templateEngine.js"></script>
+  <script src="vendor/lucide.min.js"></script>
+  <script src="vendor/tom-select/js/tom-select.complete.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
