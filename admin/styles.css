@@ -52,8 +52,8 @@
   --bg-body: var(--theme-background);
   --bg-overlay: none;
   --bg-card: #1a1a1a;
-  --bg-panel: #1a1a1a;
-  --bg-input: #0e0e0e;
+  --bg-panel: rgba(255, 255, 255, 0.02);
+  --bg-input: #111;
   --border-soft: var(--theme-outline);
   --border-strong: var(--theme-outline);
   --shadow-soft: none;
@@ -689,16 +689,16 @@ button.ghost.danger:hover {
   margin: 0;
   padding: 1.4rem;
   border-radius: var(--radius-md);
-  border: 2px dashed rgba(95, 120, 150, 0.4);
-  background: rgba(6, 12, 18, 0.55);
+  background: var(--bg-input);
+  border: 2px dashed var(--cffy-theme-primary-a10);
   text-align: center;
   color: var(--text-muted);
   font-weight: 600;
 }
 
 .newznab-row {
-  background: rgba(8, 16, 26, 0.92);
   border-radius: var(--radius-md);
+  background: var(--bg-input);
   border: 1px solid rgba(86, 110, 135, 0.4);
   padding: 1.4rem 1.6rem;
   display: flex;
@@ -987,7 +987,7 @@ button.ghost.danger:hover {
   padding: 0.6rem 0.85rem;
   border-radius: var(--radius-sm);
   border: 1px solid rgba(86, 110, 135, 0.28);
-  background: rgba(10, 20, 32, 0.8);
+  background: var(--bg-input);
 }
 
 .advanced-filters {
@@ -1504,8 +1504,13 @@ button.ghost.danger:hover {
   font-family: "JetBrains Mono", "Consolas", "Monaco", monospace;
   line-height: 1.5;
   white-space: pre;
-  min-height: 120px !important;
+  padding: 14px;
+  min-height: 130px !important;
   font-size: 0.92rem !important;
+  background: var(--bg-input);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--accent);
 }
 
 .preview-card {
@@ -1701,7 +1706,7 @@ header h1 {
   display: flex;
   flex-direction: column;
   padding: 0.75rem 0.55rem;
-  background: var(--theme-primary-container);
+  background: var(--theme-background);
   border-right: 1px solid var(--border-soft);
   overflow-y: auto;
 }
@@ -1711,7 +1716,7 @@ header h1 {
   gap: 0.6rem;
   padding: 0.15rem 0.25rem 1.1rem;
   font-weight: 700;
-  font-size: 0.87rem;
+  font-size: 1.5rem;
   white-space: nowrap;
 }
 .app-brand small {
@@ -1783,8 +1788,8 @@ header h1 {
   color: var(--accent);
 }
 .sidebar-link.active {
-  background: var(--cffy-theme-surface-tonal-a10);
-  color: var(--accent);
+  background: var(--cffy-theme-primary-a10);
+  color: var(--theme-surface);
   font-weight: 700;
 }
 .sidebar-link[hidden],
@@ -1793,7 +1798,6 @@ header h1 {
 }
 .sidebar-footer {
   padding-top: 0.65rem;
-  border-top: 1px solid var(--border-soft);
 }
 .container:has(> .app-sidebar) > header {
   grid-column: 2;
@@ -1809,7 +1813,6 @@ header h1 {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  border-bottom: 1px solid var(--border-soft);
   background: var(--bg-body);
   text-align: left;
 }
@@ -1918,16 +1921,18 @@ header h1 {
 .actions .primary {
   order: 3;
   margin-left: auto;
-  background: var(--accent);
-  color: var(--theme-background);
-  border-radius: var(--radius-sm);
+  background: var(--cffy-theme-surface-a20);
+  border: 1px solid var(--border-soft);
+  border-color: var(--theme-primary);
   box-shadow: none;
   text-shadow: none;
+  color: var(--theme-on-surface);
 }
 .actions .primary:hover {
   background: var(--cffy-theme-primary-a10);
   transform: none;
   box-shadow: none;
+  color: var(--theme-surface);
 }
 .save-result {
   display: grid;
@@ -2061,11 +2066,12 @@ header h1 {
 }
 .secondary {
   background: var(--cffy-theme-surface-a20);
-  border-color: var(--border-strong);
+  border-color: var(--theme-primary);
 }
 .secondary:hover {
-  background: var(--cffy-theme-surface-a30);
+  background: var(--cffy-theme-primary-a10);
   border-color: var(--accent);
+  color: var(--theme-surface);
 }
 input[type="checkbox"] {
   accent-color: var(--accent);
@@ -2287,6 +2293,16 @@ select:focus {
   color: var(--text-primary);
   font-size: 0.95rem;
 }
+
+.ts-wrapper:hover {
+  width: 100%;
+  max-width: 100%;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  border: 1px solid var(--theme-primary);
+  border-radius: var(--radius-sm);
+}
+
 .ts-wrapper .ts-control,
 .ts-wrapper.single .ts-control,
 .ts-wrapper.single.input-active .ts-control {

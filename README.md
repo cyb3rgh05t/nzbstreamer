@@ -1,9 +1,12 @@
-# UsenetStreamer
+<p align="center">
+<strong>UsenetStreamer</strong>
+</p>
+<br />
 
 <p align="center">
-  <img src="assets/icon.png" alt="UsenetStreamer logo" width="180" />
+  <img src="assets/favicon.svg" alt="UsenetStreamer logo" width="180" />
 </p>
-
+<br />
 <p align="center">
   <strong>Your Usenet-powered bridge between Prowlarr/NZBHydra, NZBDav, and Stremio.</strong><br />
   Query your favorite indexers, stream directly over WebDAV, and manage it all from a friendly web dashboard.
@@ -41,6 +44,7 @@
 ## ✨ Feature Highlights
 
 ### 🆕 Recent Enhancements
+
 - **Stream Protection modes** — unified protection selector in the dashboard: `none`, `auto-advance`, `health-check`, `health-check-auto-advance`, `smart-play-only`, and `smart-play`.
 - **Smart Play (background triage)** — background health checks add a dedicated Smart Play stream that can auto-pick healthy candidates while checks continue.
 - **Custom sorting chain** — `NZB_SORT_ORDER` drives result ordering with any combination of: `language`, `release_group`, `size`, `resolution`, `quality`, `encode`, `visual_tag`, `audio_tag`, `keyword`, `date`, `files`. Default chain: `quality,size,files`.
@@ -48,10 +52,12 @@
 - **Anime ID support** — accepts `kitsu:`, `mal:`, and `anilist:` IDs and resolves them to IMDb/TVDb via bundled mapping databases (Fribb, Kitsu-IMDB, Manami).
 
 ### 🚀 Performance & Caching
+
 - Parallel queries to Prowlarr or NZBHydra with automatic deduplication.
 - Two-tier cache (Stremio responses + verified NZBs) to keep repeat requests instant.
 
 ### 🔍 Smart Search & Language Filtering
+
 - IMDb/TMDb/TVDb and anime-ID (`kitsu:`, `mal:`, `anilist:`) aware search plans with TVDB-prefixed ID support (no Cinemeta needed). Anime IDs are resolved to IMDb/TVDb via bundled mapping databases.
 - Release titles parsed for resolution, quality, and audio language — sorting is fully configurable via `NZB_SORT_ORDER` (e.g. `quality,size,files`, `language,quality,date`, or any combination).
 - Preferred language groups (single or multiple) rise to the top and display with clear 🌐 labels.
@@ -59,22 +65,26 @@
 - A single per-quality cap (e.g., 4) keeps only the first few results for each resolution before falling back to the next tier.
 
 ### ⚡ Instant Streams from NZBDav
+
 - Completed NZBDav jobs are recognized automatically and surfaced with a ⚡ tag.
 - Instant streams are floated to the top of the list so you can start watching immediately.
 
 ### 🔌 Built-in Easynews Indexer
+
 - Toggle Easynews in the admin panel, drop in your username/password, and get native search results without running the standalone proxy.
 - Movies/series use strict Cinemeta matching for precise hits, while external text-only addons stay in loose mode.
 - Easynews results skip triage (they're treated as ✅ verified) but still flow through the usual dedupe/sorting pipeline.
 
 ### 🩺 NNTP Health Checks
+
 - Optional triage downloads a handful of NZBs, inspects archive contents, and flags bad uploads before Stremio sees them.
 - Archive checks are used to peek inside NZBs and verify two things before selection:
-  1) the archive format is supported by NZBDav
-  2) playable video files are present in the payload
+  1. the archive format is supported by NZBDav
+  2. playable video files are present in the payload
 - Decisions are cached per download URL and per normalized title, so later requests inherit health verdicts instantly.
 
 ### 🔐 Secure-by-Default
+
 - **Admin token** (`ADDON_SHARED_SECRET`) — used to access the admin dashboard where you can edit settings and credentials. Credentials are write-only (never exposed back to the UI).
 - **Stream token** (`ADDON_STREAM_TOKEN`) — a separate token used only for streaming; it cannot access the admin dashboard or modify any settings.
 
@@ -161,7 +171,7 @@ The dashboard and stream routes are protected by secret tokens. Rotate secrets/t
 
 ---
 
-## ⚙️ Configuration & Environment Variables *(prefer the admin dashboard)*
+## ⚙️ Configuration & Environment Variables _(prefer the admin dashboard)_
 
 - **Indexer sources:** `INDEXER_MANAGER` (`none`, `prowlarr`, `nzbhydra`), `INDEXER_MANAGER_URL`, `INDEXER_MANAGER_API_KEY`, `INDEXER_MANAGER_INDEXERS`, `INDEXER_MANAGER_STRICT_ID_MATCH`.
 - **Direct Newznab mode:** `NEWZNAB_ENABLED`, `NEWZNAB_FILTER_NZB_ONLY`, numbered `NEWZNAB_*` entries, optional `NEWZNAB_CAPS_CACHE`.
@@ -181,18 +191,22 @@ See `.env.example` for the complete list and defaults.
 ## 🧠 Advanced Capabilities
 
 ### Language-based ordering
+
 - Switch to `language_quality_size` sorting to pin one or more preferred languages (set via dashboard or `NZB_PREFERRED_LANGUAGE=English,Tamil`).
 - Matching releases get a ⭐ tag plus `🌐 <Language>` badges, but non-matching streams stay available.
 
 ### Instant cache awareness
+
 - Completed NZBDav titles and still-mounted NZBs are resolved by normalized titles.
 - Instant streams jump to the top of the response and are logged in Stremio metadata (`cached`, `cachedFromHistory`).
 
 ### Health triage decisions
+
 - Triage can mark NZBs `✅ verified`, `⚠️ unverified`, or `🚫 blocked`, reflected in stream tags.
 - Approved samples optionally store NZB payloads in memory, letting NZBDav mount them without re-fetching.
 
 ### Stream protection modes
+
 - **None** — no health checks, no auto-advance.
 - **Auto-Advance** — no health checks; fallback only when a stream fails.
 - **Upfront Health Check** — triage before returning stream list.
@@ -204,13 +218,13 @@ See `.env.example` for the complete list and defaults.
 
 ## 🖥️ Platform Compatibility
 
-| Platform | Status |
-| --- | --- |
-| Stremio 4.x desktop (Win/Linux) | ✅ Tested |
-| Stremio 5.x beta | ✅ Tested |
-| Android TV / Mobile | ✅ Tested |
-| iOS via Safari/TestFlight | ✅ Tested |
-| Web (Chromium-based browsers) | ✅ Tested |
+| Platform                           | Status    |
+| ---------------------------------- | --------- |
+| Stremio 4.x desktop (Win/Linux)    | ✅ Tested |
+| Stremio 5.x beta                   | ✅ Tested |
+| Android TV / Mobile                | ✅ Tested |
+| iOS via Safari/TestFlight          | ✅ Tested |
+| Web (Chromium-based browsers)      | ✅ Tested |
 | tvOS / Apple TV (Omni/Vidi/Fusion) | ✅ Tested |
 
 Anything that can load HTTPS manifests and handle `externalPlayer` hints should work. Open an issue or drop by Discord if you hit a platform-specific quirk.
