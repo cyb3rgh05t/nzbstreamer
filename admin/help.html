@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>NZBStreamer — Help & Reference</title>
     <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20261003" />
     <style>
       .help-nav {
         display: flex;
@@ -42,7 +42,7 @@
       .help-section h2 {
         margin: 0;
         font-size: 1.45rem;
-        color: var(--text-primary);
+        color: var(--accent);
       }
       .help-section p {
         margin: 0;
@@ -241,9 +241,18 @@
         <div class="app-brand">
           <img class="brand-mark" src="/assets/icon.png" alt="" /><span
             >NZBStreamer<small>CONTROL PANEL</small></span
+          ><button
+            type="button"
+            class="mobile-nav-toggle"
+            id="mobileNavToggle"
+            aria-expanded="false"
+            aria-controls="helpNav"
           >
+            <i data-lucide="menu" aria-hidden="true"></i
+            ><span class="sr-only">Open navigation</span>
+          </button>
         </div>
-        <nav aria-label="Help topics">
+        <nav id="helpNav" aria-label="Help topics">
           <span class="sidebar-label">REFERENCE</span>
           <ul class="toc-list sidebar-links">
             <li><a href="#how-it-works">How it works</a></li>
@@ -1053,6 +1062,22 @@
           link.prepend(icon);
         });
         window.lucide?.createIcons();
+
+        const mobileNavToggle = document.getElementById("mobileNavToggle");
+        mobileNavToggle?.addEventListener("click", () => {
+          const isOpen = document.body.classList.toggle("mobile-nav-open");
+          mobileNavToggle.setAttribute("aria-expanded", String(isOpen));
+          mobileNavToggle
+            .querySelector("i")
+            ?.setAttribute("data-lucide", isOpen ? "x" : "menu");
+          window.lucide?.createIcons();
+        });
+        links.forEach((link) =>
+          link.addEventListener("click", () => {
+            document.body.classList.remove("mobile-nav-open");
+            mobileNavToggle?.setAttribute("aria-expanded", "false");
+          }),
+        );
 
         function showTopic() {
           const id = decodeURIComponent(location.hash.slice(1));

@@ -112,6 +112,17 @@ body {
   overflow-x: hidden;
 }
 
+code {
+  font-family: Consolas, "Liberation Mono", monospace;
+  font-size: 0.9em;
+  color: var(--accent-strong);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  padding: 0.12em 0.35em;
+  overflow-wrap: anywhere;
+}
+
 .container {
   max-width: 1180px;
   margin: 0 auto;
@@ -397,6 +408,53 @@ header h1 {
   border-bottom: none;
 }
 
+.protection-info-table .info-table {
+  display: block;
+}
+.protection-info-table .info-table thead {
+  display: none;
+}
+.protection-info-table .info-table tbody {
+  display: grid;
+  gap: 0.75rem;
+}
+.protection-info-table .info-table tr {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 1.1fr) minmax(260px, 2fr) minmax(130px, 1fr)
+    minmax(220px, 1.8fr);
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+.protection-info-table .info-table td {
+  border: 0;
+  padding: 0.35rem 0;
+}
+.protection-info-table .info-table td::before {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.protection-info-table .info-table td:nth-child(1)::before {
+  content: "Mode";
+}
+.protection-info-table .info-table td:nth-child(2)::before {
+  content: "How it works";
+}
+.protection-info-table .info-table td:nth-child(3)::before {
+  content: "Speed";
+}
+.protection-info-table .info-table td:nth-child(4)::before {
+  content: "Trade-offs";
+}
 .info-table tbody tr:hover {
   background: rgba(53, 213, 255, 0.04);
 }
@@ -436,8 +494,7 @@ select {
   font-size: 0.95rem;
   transition:
     border 140ms ease,
-    box-shadow 160ms ease,
-    transform 100ms ease;
+    box-shadow 160ms ease;
   min-height: 48px;
   width: 100%;
   max-width: 100%;
@@ -453,7 +510,6 @@ select:focus {
   outline: none;
   border-color: var(--accent-strong);
   box-shadow: 0 0 0 4px rgba(62, 180, 255, 0.18);
-  transform: translateY(-1px);
 }
 
 select {
@@ -1148,6 +1204,12 @@ button.ghost.danger:hover {
 .sort-order-grid .checkbox:has(input[data-sort-order-option]:checked) {
   background: rgba(57, 121, 255, 0.07);
 }
+.sort-order-grid .checkbox:hover {
+  opacity: 1;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--cffy-theme-dark-a0);
+}
 
 /* One-line summary of the current priority chain. Shown above the grid so
    users don't have to mentally re-thread the numbered badges. */
@@ -1687,6 +1749,7 @@ header h1 {
   color: var(--text-primary);
 }
 .container:has(> .app-sidebar) {
+  width: 100%;
   max-width: none;
   min-height: 100vh;
   margin: 0;
@@ -1696,6 +1759,14 @@ header h1 {
   grid-template-rows: 52px auto 1fr;
   gap: 0;
   align-items: start;
+}
+.container:has(> .app-sidebar) > header,
+.container:has(> .app-sidebar) > .auth-card,
+.container:has(> .app-sidebar) > #configSection,
+.container:has(> .app-sidebar) > .help-content {
+  width: 100%;
+  max-width: 1600px;
+  justify-self: center;
 }
 .app-sidebar {
   grid-column: 1;
@@ -1718,6 +1789,20 @@ header h1 {
   font-weight: 700;
   font-size: 1.5rem;
   white-space: nowrap;
+}
+.mobile-nav-toggle {
+  display: none;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .app-brand small {
   display: block;
@@ -1788,8 +1873,9 @@ header h1 {
   color: var(--accent);
 }
 .sidebar-link.active {
-  background: var(--cffy-theme-primary-a10);
-  color: var(--theme-surface);
+  background: rgba(229, 162, 9, 0.18) !important;
+  border-color: var(--accent) !important;
+  color: var(--text-primary) !important;
   font-weight: 700;
 }
 .sidebar-link[hidden],
@@ -2045,6 +2131,23 @@ header h1 {
 .help-sidebar .toc-list .toc-section-title {
   color: var(--text-muted);
 }
+.help-sidebar .toc-list a {
+  border: 0;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.help-sidebar .toc-list a:hover,
+.help-sidebar .toc-list a:focus-visible {
+  background: var(--cffy-theme-surface-a20);
+  color: var(--accent);
+  outline: none;
+}
+.help-sidebar .toc-list a.active {
+  background: rgba(229, 162, 9, 0.18);
+  color: var(--text-primary);
+  font-weight: 700;
+}
 .info-box,
 .streaming-mode-section {
   background: var(--cffy-theme-surface-tonal-a10);
@@ -2075,6 +2178,17 @@ header h1 {
 }
 input[type="checkbox"] {
   accent-color: var(--accent);
+}
+input[type="checkbox"]:focus {
+  outline: none;
+  box-shadow: none;
+}
+input[type="text"]:focus,
+input[type="url"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+select:focus {
+  box-shadow: none !important;
 }
 input:hover,
 select:hover {
@@ -2189,6 +2303,100 @@ select:focus {
 .group h3 {
   color: var(--text-primary);
 }
+#configForm > section.group > h3 {
+  color: var(--accent);
+}
+
+.sort-order-grid .checkbox:hover,
+.sort-order-grid .checkbox:has(input[data-sort-order-option]:checked):hover,
+.sort-order-grid
+  .checkbox:has(input[data-sort-order-option]:not(:checked)):hover {
+  opacity: 1;
+  background: rgba(229, 162, 9, 0.18) !important;
+  border-color: var(--accent) !important;
+  color: var(--text-primary) !important;
+}
+.language-checkbox-grid .checkbox:hover {
+  opacity: 1;
+  background: rgba(229, 162, 9, 0.18) !important;
+  border-color: var(--accent) !important;
+  color: var(--text-primary) !important;
+}
+.language-checkbox-grid .checkbox:hover span {
+  color: var(--text-primary) !important;
+}
+.quality-checkbox-grid .checkbox:hover {
+  background: rgba(229, 162, 9, 0.18) !important;
+  border-color: var(--accent) !important;
+  color: var(--text-primary) !important;
+}
+.quality-checkbox-grid .checkbox:hover span {
+  color: var(--text-primary) !important;
+}
+input[type="text"]:focus,
+input[type="url"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+select:focus,
+select:hover {
+  box-shadow: none !important;
+  transform: none !important;
+}
+select:focus,
+select:focus-visible,
+select:active {
+  outline: none !important;
+  border-color: var(--accent) !important;
+}
+select option:hover,
+select option:checked {
+  background: rgba(229, 162, 9, 0.18) !important;
+  color: var(--text-primary);
+}
+.ts-wrapper.focus .ts-control,
+.ts-wrapper.dropdown-active .ts-control {
+  border-color: var(--accent) !important;
+  box-shadow: none !important;
+}
+.ts-dropdown .option:hover,
+.ts-dropdown .option.active:hover,
+.ts-dropdown .option.selected:hover {
+  background: rgba(229, 162, 9, 0.18) !important;
+  color: var(--text-primary) !important;
+}
+.ts-dropdown .option.active.selected,
+.ts-dropdown .option.selected.active:hover {
+  background: rgba(229, 162, 9, 0.18) !important;
+  color: var(--text-primary) !important;
+}
+.option-chip {
+  border-color: rgba(229, 162, 9, 0.55) !important;
+}
+.option-chip.active {
+  border-color: var(--accent) !important;
+}
+.option-chip:hover,
+.option-chip.active:hover {
+  background: rgba(229, 162, 9, 0.18) !important;
+  border-color: var(--accent) !important;
+  color: var(--text-primary) !important;
+  filter: none !important;
+}
+.ts-dropdown {
+  border-color: var(--accent) !important;
+  box-shadow: none !important;
+}
+.ts-wrapper,
+.ts-wrapper:hover,
+.ts-wrapper .ts-control,
+.ts-wrapper .ts-control:hover,
+.ts-dropdown,
+.ts-dropdown .option {
+  transition: none !important;
+}
+.ts-wrapper:hover {
+  border: 0 !important;
+}
 .group .field-hint {
   color: var(--text-muted);
 }
@@ -2218,26 +2426,51 @@ select:focus {
     border-bottom: 1px solid var(--border-soft);
   }
   .app-brand {
+    justify-content: space-between;
     padding: 0.2rem;
+  }
+  .mobile-nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+  .mobile-nav-toggle:hover,
+  .mobile-nav-toggle:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+    outline: none;
   }
   .app-sidebar nav {
     min-width: 0;
+    display: none;
+  }
+  .mobile-nav-open .app-sidebar nav {
+    display: block;
   }
   .app-sidebar nav > .sidebar-label,
   .sidebar-category > .sidebar-label {
     display: none;
   }
   .sidebar-links {
-    flex-direction: row;
-    overflow-x: auto;
+    flex-direction: column;
+    overflow: visible;
+    gap: 0.15rem;
   }
   .sidebar-category {
-    display: contents;
+    display: flex;
+    flex-direction: column;
   }
   .sidebar-link {
-    flex: 0 0 auto;
-    width: auto;
-    max-width: 240px;
+    width: 100%;
+    max-width: none;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2257,10 +2490,12 @@ select:focus {
     height: 42px;
     padding: 0 1rem;
   }
-  .container > .auth-card,
-  .container > #configSection {
+  .container:has(> .app-sidebar) > .auth-card,
+  .container:has(> .app-sidebar) > #configSection,
+  .container:has(> .app-sidebar) > .help-content {
     width: calc(100% - 1.5rem);
-    margin: 0.75rem;
+    max-width: none;
+    margin: 0.75rem auto;
   }
   .help-content {
     width: calc(100% - 1.5rem);
@@ -2284,6 +2519,79 @@ select:focus {
   }
   #configSection.admin-view-manifest .manifest-row {
     grid-template-columns: 1fr;
+  }
+  .actions #sourceGuardNotice {
+    flex: 0 1 auto;
+    min-height: 0;
+    height: auto;
+  }
+  .actions {
+    position: static !important;
+    flex: 0 0 auto;
+    min-height: 0;
+    height: auto !important;
+    gap: 0.65rem;
+    padding: 0.5rem 0;
+  }
+  .actions #saveStatus {
+    min-height: 0;
+  }
+  .protection-info-table {
+    padding: 0.85rem;
+    overflow: hidden;
+  }
+  .protection-info-table .info-table {
+    display: block;
+    font-size: 0.86rem;
+  }
+  .protection-info-table .info-table thead {
+    display: none;
+  }
+  .protection-info-table .info-table tbody,
+  .protection-info-table .info-table tr,
+  .protection-info-table .info-table td {
+    display: block;
+    width: 100%;
+  }
+  .protection-info-table .info-table tr {
+    margin: 0 0 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--border-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+  }
+  .protection-info-table .info-table tr:last-child {
+    margin-bottom: 0;
+  }
+  .protection-info-table .info-table td {
+    display: grid;
+    grid-template-columns: 5.4rem minmax(0, 1fr);
+    gap: 0.6rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .protection-info-table .info-table td:last-child {
+    border-bottom: 0;
+  }
+  .protection-info-table .info-table td::before {
+    color: var(--accent);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .protection-info-table .info-table td:nth-child(1)::before {
+    content: "Mode";
+  }
+  .protection-info-table .info-table td:nth-child(2)::before {
+    content: "How";
+  }
+  .protection-info-table .info-table td:nth-child(3)::before {
+    content: "Speed";
+  }
+  .protection-info-table .info-table td:nth-child(4)::before {
+    content: "Trade-offs";
   }
 }
 
@@ -2388,4 +2696,81 @@ select:focus {
 .inline-select .ts-control {
   min-height: 40px;
   padding: 0.4rem 2rem 0.4rem 0.7rem;
+}
+
+.protection-info-table .info-table td:first-child strong {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid rgba(229, 162, 9, 0.55);
+  border-radius: 999px;
+  background: rgba(229, 162, 9, 0.08);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+
+@media (max-width: 1600px) and (min-width: 801px) {
+  .container:has(> .app-sidebar) > header,
+  .container:has(> .app-sidebar) > .auth-card,
+  .container:has(> .app-sidebar) > #configSection {
+    width: calc(100% - 1.5rem);
+  }
+}
+
+/* Final Tom Select overrides: keep the control stable across hover, focus, and
+   the open state after the vendor component styles have loaded. */
+.ts-wrapper,
+.ts-wrapper:hover {
+  border: 0 !important;
+  border-radius: 0 !important;
+  transition: none !important;
+}
+.ts-wrapper .ts-control,
+.ts-wrapper .ts-control:hover,
+.ts-wrapper.focus .ts-control,
+.ts-wrapper.dropdown-active .ts-control {
+  border: 1px solid var(--accent) !important;
+  border-radius: var(--radius-sm) !important;
+  outline: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: none !important;
+}
+.ts-wrapper.single .ts-control {
+  justify-content: flex-start;
+  align-items: center;
+  text-align: left;
+}
+.ts-wrapper.single .ts-control > .item {
+  text-align: left;
+  line-height: 1.2;
+}
+.ts-wrapper:focus,
+.ts-wrapper:focus-within,
+.ts-wrapper .ts-control:focus,
+.ts-wrapper .ts-control:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.ts-dropdown {
+  border: 1px solid var(--accent) !important;
+  border-radius: var(--radius-sm) !important;
+  background: var(--bg-card) !important;
+  box-shadow: none !important;
+  overflow: hidden;
+  transition: none !important;
+}
+.ts-dropdown .option,
+.ts-dropdown .option:hover,
+.ts-dropdown .option.active:hover,
+.ts-dropdown .option.selected:hover {
+  transition: none !important;
+}
+.ts-dropdown .option:hover,
+.ts-dropdown .option.active:hover,
+.ts-dropdown .option.selected:hover {
+  background: rgba(229, 162, 9, 0.18) !important;
+  color: var(--text-primary) !important;
 }

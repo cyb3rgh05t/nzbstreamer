@@ -1697,6 +1697,15 @@
   }
 
   function setupSettingsNavigation() {
+    const mobileNavToggle = document.getElementById("mobileNavToggle");
+    mobileNavToggle?.addEventListener("click", () => {
+      const isOpen = document.body.classList.toggle("mobile-nav-open");
+      mobileNavToggle.setAttribute("aria-expanded", String(isOpen));
+      mobileNavToggle
+        .querySelector("i")
+        ?.setAttribute("data-lucide", isOpen ? "x" : "menu");
+      window.lucide?.createIcons();
+    });
     document
       .getElementById("authSettingsButton")
       .addEventListener("click", () => {
@@ -1775,6 +1784,8 @@
       button.prepend(icon);
       button.title = button.textContent;
       button.addEventListener("click", () => {
+        document.body.classList.remove("mobile-nav-open");
+        mobileNavToggle?.setAttribute("aria-expanded", "false");
         document.body.classList.remove("auth-open");
         activeSettingsView = section;
         syncSettingsNavigation();
@@ -1792,6 +1803,8 @@
     manifestIcon.setAttribute("aria-hidden", "true");
     manifestButton.prepend(manifestIcon);
     manifestButton.addEventListener("click", () => {
+      document.body.classList.remove("mobile-nav-open");
+      mobileNavToggle?.setAttribute("aria-expanded", "false");
       document.body.classList.remove("auth-open");
       activeSettingsView = "manifest";
       syncSettingsNavigation();
