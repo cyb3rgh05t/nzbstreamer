@@ -26,6 +26,11 @@
   const stremioAppButton = document.getElementById("installStremioApp");
   const healthPaidWarning = document.getElementById("healthPaidWarning");
   const saveButton = configForm.querySelector('button[type="submit"]');
+  let hasUnsavedChanges = false;
+  function setUnsavedChanges(isDirty) {
+    hasUnsavedChanges = isDirty;
+    saveButton?.classList.toggle("has-unsaved-changes", isDirty);
+  }
   let currentProfileSlug = null; // null = Default/global; a slug = editing that profile (declared early so syncSaveGuard can read it)
   const sourceGuardNotice = document.getElementById("sourceGuardNotice");
   const qualityHiddenInput = configForm.querySelector(
@@ -413,7 +418,7 @@
     savedManifestStatus.textContent = "";
     saveStatus.textContent = "";
     saveResult.classList.remove("hidden");
-    saveResult.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    saveResult.scrollIntoView({ block: "start", behavior: "smooth" });
   }
 
   function parseBool(value) {
@@ -784,6 +789,7 @@
           const current = builder.activeOrder[idx].direction;
           builder.activeOrder[idx].direction =
             current === "asc" ? "desc" : "asc";
+          setUnsavedChanges(true);
           syncBuilderUI(builder);
           syncSaveGuard();
         });
@@ -988,7 +994,7 @@
       sourceGuardNotice.classList.toggle("hidden", hasSource);
     }
     if (saveButton && !saveInProgress) {
-      saveButton.disabled = !hasSource;
+      saveButton.disabled = false;
     }
   }
 
@@ -1599,6 +1605,7 @@
         lastGlobalValues.NZB_DEDUP_MODE = dedupeModeSelect.value;
       }
       refreshFormBuilders();
+      setUnsavedChanges(false);
       configSection.classList.remove("hidden");
       document.body.classList.add("has-config");
       document.body.classList.remove("auth-open");
@@ -1649,8 +1656,7 @@
       });
     }
 
-    // ... other listeners ...
-    if (saveButton) saveButton.addEventListener("click", handleSave);
+    // The submit handler below owns saving; the button submits this form.
   }
 
   function isSettingsSectionAvailable(section) {
@@ -1694,6 +1700,41 @@
       : activeSettingsView
           .querySelector(":scope > h3")
           .firstChild.textContent.trim();
+  }
+
+  async function confirmNavigationWithUnsavedChanges() {
+    if (!hasUnsavedChanges) return true;
+    const dialog = document.getElementById("unsavedChangesDialog");
+    const saveAction = document.getElementById("unsavedSave");
+    const keepEditingAction = document.getElementById("unsavedKeepEditing");
+    if (!dialog || !saveAction || !keepEditingAction) return false;
+
+    const choice = await new Promise((resolve) => {
+      const cleanup = () => {
+        saveAction.removeEventListener("click", save);
+        keepEditingAction.removeEventListener("click", stay);
+        dialog.removeEventListener("cancel", cancel);
+      };
+      const finish = (value) => {
+        cleanup();
+        if (dialog.open) dialog.close();
+        resolve(value);
+      };
+      const save = () => finish("save");
+      const stay = () => finish("stay");
+      const cancel = (event) => {
+        event.preventDefault();
+        finish("stay");
+      };
+      saveAction.addEventListener("click", save);
+      keepEditingAction.addEventListener("click", stay);
+      dialog.addEventListener("cancel", cancel);
+      dialog.showModal();
+      saveAction.focus();
+    });
+
+    if (choice === "save") return saveConfiguration();
+    return false;
   }
 
   function setupSettingsNavigation() {
@@ -1783,7 +1824,13 @@
       icon.setAttribute("aria-hidden", "true");
       button.prepend(icon);
       button.title = button.textContent;
-      button.addEventListener("click", () => {
+      button.addEventListener("click", async () => {
+        if (
+          section !== activeSettingsView &&
+          !(await confirmNavigationWithUnsavedChanges())
+        ) {
+          return;
+        }
         document.body.classList.remove("mobile-nav-open");
         mobileNavToggle?.setAttribute("aria-expanded", "false");
         document.body.classList.remove("auth-open");
@@ -1802,7 +1849,13 @@
     manifestIcon.dataset.lucide = "download";
     manifestIcon.setAttribute("aria-hidden", "true");
     manifestButton.prepend(manifestIcon);
-    manifestButton.addEventListener("click", () => {
+    manifestButton.addEventListener("click", async () => {
+      if (
+        activeSettingsView !== "manifest" &&
+        !(await confirmNavigationWithUnsavedChanges())
+      ) {
+        return;
+      }
       document.body.classList.remove("mobile-nav-open");
       mobileNavToggle?.setAttribute("aria-expanded", "false");
       document.body.classList.remove("auth-open");
@@ -2438,7 +2491,7 @@
   }
 
   async function saveConfiguration(event) {
-    event.preventDefault();
+    event?.preventDefault();
     saveStatus.textContent = "";
     hideSaveResult();
     if (currentProfileSlug !== null) {
@@ -2453,7 +2506,7 @@
       if (!nntpHost?.value?.trim()) {
         saveStatus.textContent =
           "Error: Zyclops requires your Usenet Provider Host to be set in the NNTP Health Check Credentials section.";
-        return;
+        return false;
       }
     }
 
@@ -2471,8 +2524,11 @@
         ? "Settings applied and the addon restarted on the new port. All cached results cleared."
         : "Settings applied instantly — no restart needed. All cached results cleared.";
       showSaveResult("Settings saved", reloadNote, manifestUrl);
+      setUnsavedChanges(false);
+      return true;
     } catch (error) {
       saveStatus.textContent = `Error: ${error.message}`;
+      return false;
     } finally {
       markSaving(false);
     }
@@ -2484,6 +2540,12 @@
   });
 
   configForm.addEventListener("submit", saveConfiguration);
+  configForm.addEventListener("input", () => {
+    setUnsavedChanges(true);
+  });
+  configForm.addEventListener("change", () => {
+    setUnsavedChanges(true);
+  });
 
   // ── Profiles (Option C top switcher) ────────────────────────────────────────
   // currentProfileSlug (declared near the top): null = editing Default/global (saves via
@@ -2496,6 +2558,9 @@
   const profileTabs = document.getElementById("profileTabs");
   const profileEditRow = document.getElementById("profileEditRow");
   const profileNameInput = document.getElementById("profileNameInput");
+  profileNameInput.addEventListener("input", () => {
+    setUnsavedChanges(true);
+  });
   const deleteProfileBtn = document.getElementById("deleteProfileBtn");
   const profileInstallHint = document.getElementById("profileInstallHint");
   const profileMultiInstallWarning = document.getElementById(
@@ -2780,7 +2845,7 @@
     const name = (profileNameInput.value || "").trim();
     if (!name) {
       saveStatus.textContent = "Error: enter a profile name.";
-      return;
+      return false;
     }
     try {
       markSaving(true);
@@ -2814,8 +2879,11 @@
         "Settings apply instantly — no restart needed.",
         profileManifestUrl,
       );
+      setUnsavedChanges(false);
+      return true;
     } catch (error) {
       saveStatus.textContent = `Error: ${error.message}`;
+      return false;
     } finally {
       markSaving(false);
     }

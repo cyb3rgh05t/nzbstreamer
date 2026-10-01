@@ -2024,6 +2024,7 @@ header h1 {
   display: grid;
   gap: 1rem;
   min-width: 0;
+  scroll-margin-top: 4.5rem;
   padding: 1.2rem 1.4rem;
   border: 1px solid var(--border-soft);
   border-left: 3px solid var(--accent);
@@ -2363,6 +2364,92 @@ select option:checked {
 .ts-dropdown .option.selected:hover {
   background: rgba(229, 162, 9, 0.18) !important;
   color: var(--text-primary) !important;
+}
+
+.unsaved-dialog {
+  width: min(30rem, calc(100vw - 2rem));
+  padding: 1.5rem;
+  border: 1px solid var(--border-soft);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.5);
+}
+.unsaved-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(3px);
+}
+.unsaved-dialog-mark {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  margin-bottom: 0.9rem;
+  border: 1px solid var(--cffy-theme-surface-tonal-a30);
+  border-radius: var(--radius-sm);
+  background: rgba(229, 162, 9, 0.1);
+  color: var(--accent);
+}
+.unsaved-dialog-mark svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.unsaved-dialog h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--text-primary);
+}
+.unsaved-dialog p {
+  margin: 0.45rem 0 1.25rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.unsaved-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+.unsaved-dialog-actions button {
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.85rem;
+}
+.unsaved-dialog-actions .primary {
+  background: var(--accent);
+  color: var(--theme-background);
+  border: 1px solid var(--accent);
+  text-shadow: none;
+}
+.actions .primary.has-unsaved-changes {
+  animation: unsaved-save-pulse 1.35s ease-in-out infinite;
+}
+@keyframes unsaved-save-pulse {
+  0%,
+  100% {
+    background: var(--cffy-theme-surface-a20);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0 rgba(229, 162, 9, 0);
+  }
+  50% {
+    background: rgba(229, 162, 9, 0.28);
+    border-color: var(--accent-strong);
+    box-shadow: 0 0 0 6px rgba(229, 162, 9, 0.24);
+  }
+}
+@media (max-width: 520px) {
+  .unsaved-dialog {
+    padding: 1.2rem;
+  }
+  .unsaved-dialog-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .actions .primary.has-unsaved-changes {
+    animation: none;
+  }
 }
 .ts-dropdown .option.active.selected,
 .ts-dropdown .option.selected.active:hover {

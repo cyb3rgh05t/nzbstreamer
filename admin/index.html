@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="/assets/icon.png" />
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="vendor/tom-select/css/tom-select.default.min.css" />
-  <link rel="stylesheet" href="styles.css?v=20261003" />
+  <link rel="stylesheet" href="styles.css?v=20261007" />
   <style>
     /* Profile switcher — a sibling sub-panel matching the form's .group panels,
        with tabs styled as pill buttons using the shared button language. */
@@ -1120,6 +1120,15 @@ health'></textarea>
 
     </section>
   </main>
+  <dialog class="unsaved-dialog" id="unsavedChangesDialog" aria-labelledby="unsavedDialogTitle" aria-describedby="unsavedDialogDescription">
+    <div class="unsaved-dialog-mark" aria-hidden="true"><i data-lucide="save"></i></div>
+    <h2 id="unsavedDialogTitle">Unsaved changes</h2>
+    <p id="unsavedDialogDescription">Your settings haven't been saved. Save them before switching sections, or stay here and continue editing.</p>
+    <div class="unsaved-dialog-actions">
+      <button type="button" class="secondary" id="unsavedKeepEditing">Keep editing</button>
+      <button type="button" class="primary" id="unsavedSave">Save &amp; switch</button>
+    </div>
+  </dialog>
   <script src="/utils/templateEngine.js"></script>
   <script src="vendor/lucide.min.js"></script>
   <script src="vendor/tom-select/js/tom-select.complete.min.js"></script>
