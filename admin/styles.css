@@ -2770,6 +2770,11 @@ select option:checked {
   background: var(--accent);
   color: var(--theme-background);
 }
+.language-checkbox-grid .checkbox:has(input[data-language-option]:checked),
+.quality-checkbox-grid .checkbox:has(input[data-quality-option]:checked) {
+  background: rgba(229, 162, 9, 0.14) !important;
+  border-color: rgba(229, 162, 9, 0.55) !important;
+}
 .ts-dropdown .option[aria-disabled="true"] {
   display: none;
 }
