@@ -2285,6 +2285,10 @@ select:focus {
 .newznab-row:hover {
   border-color: var(--cffy-theme-surface-a40);
 }
+.newznab-row,
+.newznab-row:hover {
+  border-left: 3px solid var(--accent);
+}
 .sort-order-summary {
   border-style: dashed;
 }
