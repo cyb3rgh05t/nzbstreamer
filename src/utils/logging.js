@@ -234,6 +234,15 @@ function safeRequestPath(requestPath) {
     (part, index) => index > 0 && resources.has(part.toLowerCase()),
   );
   if (resourceIndex > 1) parts[1] = ":token";
+  const internalNzbRouteIndex = parts.findIndex(
+    (part, index) =>
+      index > 1 &&
+      parts[index - 1].toLowerCase() === "nzb" &&
+      ["stream", "smartplay", "fetch"].includes(part.toLowerCase()),
+  );
+  if (internalNzbRouteIndex >= 0 && parts.length > internalNzbRouteIndex + 1) {
+    return [...parts.slice(0, internalNzbRouteIndex + 1), ":params"].join("/");
+  }
   return parts.join("/");
 }
 

@@ -216,16 +216,20 @@ function createAdminSession() {
   return id;
 }
 
-function hasAdminSession(req) {
+function getAdminSessionId(req) {
   const id = getCookieValue(req, ADMIN_SESSION_COOKIE);
-  if (!/^[a-f0-9]{64}$/.test(id)) return false;
+  if (!/^[a-f0-9]{64}$/.test(id)) return "";
   const session = adminSessions.get(id);
   if (!session || session.expiresAt <= Date.now()) {
     adminSessions.delete(id);
-    return false;
+    return "";
   }
   session.expiresAt = Date.now() + ADMIN_SESSION_TTL_MS;
-  return true;
+  return id;
+}
+
+function hasAdminSession(req) {
+  return Boolean(getAdminSessionId(req));
 }
 
 function destroyAdminSession(req) {
@@ -345,6 +349,7 @@ module.exports = {
   ADMIN_SESSION_TTL_MS,
   authenticateAdminCredentials,
   createAdminSession,
+  getAdminSessionId,
   hasAdminSession,
   destroyAdminSession,
   getAdminSessionCookie,

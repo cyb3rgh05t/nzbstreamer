@@ -12,6 +12,9 @@
     configForm.querySelectorAll(":scope > section.group"),
   );
   let activeSettingsView = settingsSections[0];
+  let sessionMonitorTimer = null;
+  let sessionExpiredReturnToConfig = false;
+  let sessionExpiredViewTitle = "";
   const manifestDescription = document.getElementById("manifestDescription");
   const saveStatus = document.getElementById("saveStatus");
   const saveResult = document.getElementById("saveResult");
@@ -31,6 +34,44 @@
   function setUnsavedChanges(isDirty) {
     hasUnsavedChanges = isDirty;
     saveButton?.classList.toggle("has-unsaved-changes", isDirty);
+  }
+
+  function showSignInForExpiredSession() {
+    if (!document.body.classList.contains("has-config")) return;
+    sessionExpiredReturnToConfig = true;
+    sessionExpiredViewTitle = currentViewTitle.textContent || "";
+    configSection.classList.add("hidden");
+    document.body.classList.remove("has-config");
+    document.body.classList.add("auth-open");
+    document.getElementById("authSettingsButton").hidden = true;
+    currentViewTitle.textContent = "Sign in";
+    authError.textContent = hasUnsavedChanges
+      ? "Your session expired. Sign in again; your unsaved changes are still here."
+      : "Your session expired. Sign in again to continue.";
+    authError.classList.remove("hidden");
+    passwordInput.value = "";
+    usernameInput.focus();
+  }
+
+  function startAdminSessionMonitor() {
+    if (sessionMonitorTimer) clearInterval(sessionMonitorTimer);
+    sessionMonitorTimer = setInterval(async () => {
+      if (!document.body.classList.contains("has-config")) return;
+      try {
+        const response = await fetch("/admin/api/auth/session", {
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) {
+          if (response.status === 401) showSignInForExpiredSession();
+          return;
+        }
+        const session = await response.json();
+        if (!session.authenticated) showSignInForExpiredSession();
+      } catch {
+        // A temporary network failure is not proof that the session expired.
+      }
+    }, 60 * 1000);
   }
   let currentProfileSlug = null; // null = Default/global; a slug = editing that profile (declared early so syncSaveGuard can read it)
   const sourceGuardNotice = document.getElementById("sourceGuardNotice");
@@ -1496,8 +1537,14 @@
       } catch (err) {
         // ignore json parse errors
       }
-      if (response.status === 401)
-        throw new Error("Your admin session expired. Sign in again.");
+      if (response.status === 401) {
+        if (path !== "/admin/api/auth/login") {
+          showSignInForExpiredSession();
+        }
+        const error = new Error("Your admin session expired. Sign in again.");
+        error.status = 401;
+        throw error;
+      }
       throw new Error(message || "Request failed");
     }
     if (response.status === 204) return null;
@@ -1590,6 +1637,7 @@
       const baseMessage =
         "Use the install buttons once HTTPS and your shared token are set.";
       manifestDescription.textContent = baseMessage;
+      startAdminSessionMonitor();
     } catch (error) {
       authError.textContent = error.message;
       authError.classList.remove("hidden");
@@ -1704,6 +1752,11 @@
     document
       .getElementById("authSettingsButton")
       .addEventListener("click", async () => {
+        if (sessionMonitorTimer) {
+          clearInterval(sessionMonitorTimer);
+          sessionMonitorTimer = null;
+        }
+        sessionExpiredReturnToConfig = false;
         try {
           await apiRequest("/admin/api/auth/logout", { method: "POST" });
         } catch (error) {
@@ -2494,7 +2547,9 @@
       setUnsavedChanges(false);
       return true;
     } catch (error) {
-      saveStatus.textContent = `Error: ${error.message}`;
+      if (error?.status !== 401) {
+        saveStatus.textContent = `Error: ${error.message}`;
+      }
       return false;
     } finally {
       markSaving(false);
@@ -2514,8 +2569,20 @@
         }),
       });
       passwordInput.value = "";
-      await loadConfiguration();
-      setupPatternPreview();
+      if (sessionExpiredReturnToConfig) {
+        sessionExpiredReturnToConfig = false;
+        authError.classList.add("hidden");
+        configSection.classList.remove("hidden");
+        document.body.classList.add("has-config");
+        document.body.classList.remove("auth-open");
+        document.getElementById("authSettingsButton").hidden = false;
+        currentViewTitle.textContent = sessionExpiredViewTitle || "Settings";
+        syncSettingsNavigation();
+        startAdminSessionMonitor();
+      } else {
+        await loadConfiguration();
+        setupPatternPreview();
+      }
     } catch (error) {
       authError.textContent = error.message;
       authError.classList.remove("hidden");
@@ -3461,7 +3528,7 @@
     easynewsPassInput.addEventListener("input", syncSaveGuard);
   }
 
-  apiRequest("/admin/api/auth/session")
+  apiRequest("/admin/api/auth/session", { cache: "no-store" })
     .then((session) => {
       if (session.authenticated) {
         loadConfiguration();

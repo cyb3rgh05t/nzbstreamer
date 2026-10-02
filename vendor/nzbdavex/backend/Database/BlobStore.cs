@@ -19,40 +19,83 @@ public class BlobStore
         return Path.Combine(ConfigPath, "blobs", firstTwo, nextTwo, fileName);
     }
 
-    private static FileStream OpenBlobWrite(Guid id)
+    private static string CreateBlobTempPath(Guid id)
     {
         var blobPath = GetBlobPath(id);
         var directory = Path.GetDirectoryName(blobPath);
 
         // Acquire file handle inside lock to prevent race condition where
         // directory gets deleted between CreateDirectory and File.Create
-        FileStream fileStream;
         lock (LockObj)
         {
             Directory.CreateDirectory(directory!);
-            fileStream = File.Create(blobPath);
         }
 
-        return fileStream;
+        return Path.Combine(directory!, $".{id:N}.{Guid.NewGuid():N}.tmp");
+    }
+
+    private static async Task WriteBlobAtomically(Guid id, Func<Stream, Task> writeContent)
+    {
+        var blobPath = GetBlobPath(id);
+        var tempPath = CreateBlobTempPath(id);
+        try
+        {
+            await using (var fileStream = new FileStream(
+                tempPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 81920,
+                useAsync: true))
+            {
+                await writeContent(fileStream).ConfigureAwait(false);
+                await fileStream.FlushAsync().ConfigureAwait(false);
+            }
+
+            // Existing readers retain their old file handle while new opens see
+            // the fully written replacement, avoiding partial blob reads.
+            File.Move(tempPath, blobPath, overwrite: true);
+        }
+        catch
+        {
+            if (File.Exists(tempPath)) File.Delete(tempPath);
+            throw;
+        }
     }
 
     public static async Task WriteBlob(Guid id, Stream stream)
     {
-        await using var fileStream = OpenBlobWrite(id);
-        await stream.CopyToAsync(fileStream);
+        await WriteBlobAtomically(
+            id,
+            fileStream => stream.CopyToAsync(fileStream));
     }
 
     public static async Task WriteBlob<T>(Guid id, T blob)
     {
-        await using var fileStream = OpenBlobWrite(id);
-        await using var compressionStream = new CompressionStream(fileStream, CompressionLevel);
-        await MemoryPackSerializer.SerializeAsync(compressionStream, blob);
+        await WriteBlobAtomically(id, async fileStream =>
+        {
+            await using var compressionStream = new CompressionStream(fileStream, CompressionLevel);
+            await MemoryPackSerializer.SerializeAsync(compressionStream, blob).ConfigureAwait(false);
+        });
     }
 
     public static Stream? ReadBlob(Guid id)
     {
         var blobPath = GetBlobPath(id);
-        return File.Exists(blobPath) ? File.OpenRead(blobPath) : null;
+        try
+        {
+            return new FileStream(
+                blobPath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read | FileShare.Delete,
+                bufferSize: 81920,
+                useAsync: true);
+        }
+        catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return null;
+        }
     }
 
     public static async Task<T?> ReadBlob<T>(Guid id)

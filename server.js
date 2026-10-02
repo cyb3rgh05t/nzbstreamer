@@ -125,6 +125,7 @@ const {
   ADMIN_SESSION_TTL_MS,
   authenticateAdminCredentials,
   createAdminSession,
+  getAdminSessionId,
   hasAdminSession,
   destroyAdminSession,
   getAdminSessionCookie,
@@ -475,7 +476,15 @@ app.post(
 );
 
 app.get("/admin/api/auth/session", (req, res) => {
-  res.json({ authenticated: hasAdminSession(req) });
+  res.setHeader("Cache-Control", "no-store");
+  const sessionId = getAdminSessionId(req);
+  if (sessionId) {
+    res.setHeader("Set-Cookie", getAdminSessionCookie(sessionId, req));
+  }
+  res.json({
+    authenticated: Boolean(sessionId),
+    expiresIn: sessionId ? ADMIN_SESSION_TTL_MS : 0,
+  });
 });
 
 app.post("/admin/api/auth/logout", (req, res) => {
