@@ -2704,7 +2704,7 @@
     section.classList.toggle("profile-inherit", !on);
     section.classList.toggle("section-collapsed", !on);
     section
-      .querySelectorAll("input[name], select[name], textarea[name], button")
+      .querySelectorAll("input, select, textarea, button")
       .forEach((el) => {
         if (el.hasAttribute("data-profile-override-toggle")) return;
         if (el.type === "submit") return;
@@ -2754,9 +2754,7 @@
     // by removing profile-mode + refreshFormBuilders() below.
     profileSections.forEach((s) => {
       s.classList.remove("profile-inherit", "section-collapsed");
-      s.querySelectorAll(
-        "input[name], select[name], textarea[name], button",
-      ).forEach((el) => {
+      s.querySelectorAll("input, select, textarea, button").forEach((el) => {
         el.disabled = false;
       });
     });
@@ -3101,7 +3099,6 @@
     qualityCheckboxes.forEach((checkbox) => {
       checkbox.addEventListener("change", () => {
         syncQualityHiddenInput();
-        syncResolutionLimitDisabledStates();
         syncSaveGuard();
       });
     });

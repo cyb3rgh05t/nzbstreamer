@@ -864,17 +864,17 @@ adminApiRouter.post("/profiles", (req, res) => {
   }
   const idx = String(slotNum).padStart(2, "0");
 
-  // Whitelist: only known override suffixes; empty/missing -> null (clear = inherit).
+  // Whitelist: only known override suffixes; missing/null -> inherit. An explicit
+  // empty string is a real override so profiles can clear an inherited global value.
   const incomingOverrides =
     body.overrides && typeof body.overrides === "object" ? body.overrides : {};
   const updates = { [`NZB_PROFILE_${idx}_NAME`]: rawName };
   Object.keys(profileManager.PROFILE_OVERRIDES).forEach((suffix) => {
     const v = incomingOverrides[suffix];
-    const trimmed = typeof v === "string" ? v.trim() : v;
     updates[`NZB_PROFILE_${idx}_${suffix}`] =
-      trimmed === "" || trimmed === null || trimmed === undefined
+      v === null || v === undefined
         ? null
-        : String(trimmed);
+        : String(typeof v === "string" ? v.trim() : v);
   });
 
   try {

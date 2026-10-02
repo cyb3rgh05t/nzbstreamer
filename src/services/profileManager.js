@@ -16,7 +16,7 @@
 //     ...
 //
 // A slot is "active" when its NAME field is non-empty; NAME is the URL segment.
-// An empty/absent field = inherit the global value.
+// An absent field inherits the global value; an explicit empty value overrides it.
 
 const MAX_PROFILES = 50;
 
@@ -126,8 +126,13 @@ function getProfiles(source = process.env) {
     if (!slug) continue;
     const overrides = {};
     Object.keys(PROFILE_OVERRIDES).forEach((suffix) => {
-      const v = source[`NZB_PROFILE_${idx}_${suffix}`];
-      if (v !== undefined && v !== null && String(v).trim() !== '') {
+      const key = `NZB_PROFILE_${idx}_${suffix}`;
+      const v = source[key];
+      if (
+        Object.prototype.hasOwnProperty.call(source, key) &&
+        v !== undefined &&
+        v !== null
+      ) {
         overrides[suffix] = String(v);
       }
     });

@@ -69,7 +69,16 @@ function applyRuntimeEnv() {
   Object.entries(env).forEach(([key, value]) => {
     // Skip empty runtime-env values when a non-empty value already exists
     // (e.g. set via .env or Docker environment variable)
-    if (value === '' && process.env[key] && process.env[key].trim() !== '') return;
+    // except for profile fields, where an explicit empty value means "override
+    // the inherited global value with an empty setting".
+    if (
+      value === '' &&
+      !key.startsWith('NZB_PROFILE_') &&
+      process.env[key] &&
+      process.env[key].trim() !== ''
+    ) {
+      return;
+    }
     process.env[key] = value;
   });
   appliedKeys = new Set(Object.keys(env));
