@@ -6,9 +6,11 @@ This guide walks absolute beginners through everything required to expose Usenet
 
 1. **Usenet provider:** e.g., Newshosting, Easynews, Eweka. Without a provider you cannot download anything.
 2. **Indexer/API access:** Pick one of the following:
-  - Use the **built-in Easynews bridge** (just your Easynews username/password).
-  - Add one or more **direct Newznab APIs** (NZBGeek, Usenet-Crawler, etc.) straight into the UsenetStreamer admin panel.
-  - Optional: run **Prowlarr or NZBHydra** if you already love them. They’re no longer required for this guide.
+
+- Use the **built-in Easynews bridge** (just your Easynews username/password).
+- Add one or more **direct Newznab APIs** (NZBGeek, Usenet-Crawler, etc.) straight into the UsenetStreamer admin panel.
+- Optional: run **Prowlarr or NZBHydra** if you already love them. They’re no longer required for this guide.
+
 3. **DuckDNS account (optional):** only needed if you want public HTTPS access. For home/LAN streaming you can skip this and just use your server’s IP (e.g., `http://192.168.1.50:7000`). If you do need remote access, sign up at [https://www.duckdns.org](https://www.duckdns.org), create a subdomain (e.g., `mystreamer`), and point it at your VPS/static IP.
 
 ## 1. Rent a VPS and Log In
@@ -53,7 +55,7 @@ id
 Note the `uid=` and `gid=` values and reuse them anywhere this guide mentions `PUID`/`PGID`.
 
 ```bash
-mkdir -p ~/usenetstack/{nzbdav,usenetstreamer-config}
+mkdir -p ~/usenetstack/usenetstreamer-config
 mkdir -p ~/usenetstack/prowlarr  # only if you still plan to run Prowlarr/NZBHydra locally
 cd ~/usenetstack
 ```
@@ -64,37 +66,24 @@ cd ~/usenetstack
 version: "3.9"
 
 services:
-  nzbdav:
-    image: nzbdav/nzbdav:alpha
-    container_name: nzbdav
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      - PUID=1000
-      - PGID=1000
-    volumes:
-      - ./nzbdav:/config
-
   usenetstreamer:
     image: ghcr.io/sanket9225/usenetstreamer:latest
     container_name: usenetstreamer
     restart: unless-stopped
-    depends_on:
-      - nzbdav
     ports:
       - "7000:7000"
     environment:
-      ADDON_SHARED_SECRET: Enter-some-random-string-here-as-token
-      ADDON_BASE_URL: https://your-duckdns-subdomain.duckdns.org/
-      NZBDAV_URL: http://nzbdav:3000
-      NZBDAV_WEBDAV_URL: http://nzbdav:3000
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+      ADDON_BASE_URL: ${ADDON_BASE_URL:?Set ADDON_BASE_URL in .env}
+      NZBDAV_BACKEND: internal
       CONFIG_DIR: /data/config
     volumes:
       - ./usenetstreamer-config:/data/config
 
 # Notes:
-# - Keep `ADDON_BASE_URL` secret-free; the addon automatically appends `/your-secret/` when serving manifests.
+# - Keep `ADDON_BASE_URL` secret-free; the addon automatically appends the stream token when serving manifests.
+# - `NZBDAV_BACKEND: internal` runs the bundled NZBDavEx engine inside NZBStreamer; no second service is required.
 # - All API keys, Easynews credentials, and direct Newznab endpoints can be entered later via the admin dashboard.
 # - Want to keep Prowlarr/NZBHydra? Add another service block and set `INDEXER_MANAGER_URL`/`API_KEY` env vars.
 # - `CONFIG_DIR` tells UsenetStreamer to persist `runtime-env.json` under `/data/config`, which is the host bind mount you just created.
@@ -104,7 +93,9 @@ services:
 
 ```bash
 cat <<'EOF' > .env
-ADDON_SECRET=$(cat .shared-secret)
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=replace-with-a-long-random-password
+ADDON_BASE_URL=https://your-duckdns-subdomain.duckdns.org/
 EOF
 ```
 
@@ -115,11 +106,11 @@ docker compose pull
 docker compose up -d
 ```
 
-Visit the services:
+Open the dashboard:
 
-- `http://your-vps-ip:3000` – configure NZBDav: add your Usenet provider credentials, set up WebDAV username/password, and note its API URL for later.
-- `http://your-vps-ip:7000/<ADDON_SECRET>/admin/` – log in and:
-  - Paste your NZBDav API/WebDAV info (test the connection button).
+- `http://your-vps-ip:7000/admin/` – sign in with the configured admin username/password and:
+  - Keep **Built-in NZBDavEx** selected; no separate NZBDav setup is needed.
+  - Add your NNTP provider in the Providers section; NZBDav Mode uses these credentials.
   - Either enter Easynews credentials or add direct Newznab endpoints via the built-in presets.
   - Optional: if you still run Prowlarr/NZBHydra somewhere, fill in its URL/API key and toggle whichever indexers you want shared.
 
@@ -129,14 +120,13 @@ Visit the services:
 sudo ufw allow 22/tcp
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
-sudo ufw allow 3000/tcp
 sudo ufw allow 7000/tcp
 sudo ufw enable
 ```
 
 If you expose Prowlarr/NZBHydra on the same box, also allow `9696/tcp`.
 
-**Important:** your cloud provider usually has its own firewall. Log into your VPS dashboard and add inbound rules for ports `80`, `443`, `7000`, `3000`, and `22` (TCP)—plus `9696` if you chose to publish a manager. On Oracle/Vultr/AWS you’ll find this under “Security List,” “Firewall,” or “VPC security group.” If you skip this step, nothing outside the VPS will reach your services even though UFW allows them.
+**Important:** your cloud provider usually has its own firewall. Log into your VPS dashboard and add inbound rules for ports `80`, `443`, `7000`, and `22` (TCP)—plus `9696` if you chose to publish a manager. On Oracle/Vultr/AWS you’ll find this under “Security List,” “Firewall,” or “VPC security group.” If you skip this step, nothing outside the VPS will reach your services even though UFW allows them.
 
 ## 7. Configure DuckDNS
 
@@ -174,7 +164,7 @@ sudo systemctl reload caddy
 
 ## 9. Final Checklist
 
-- Update `INDEXER_MANAGER_API_KEY`, NZBDav credentials, and `ADDON_BASE_URL` inside the UsenetStreamer dashboard (now reachable at your DuckDNS URL).
+- Update `INDEXER_MANAGER_API_KEY`, NNTP provider credentials, and `ADDON_BASE_URL` inside the UsenetStreamer dashboard (now reachable at your DuckDNS URL).
 - Run the **Connection Tests** tab to confirm every service is reachable.
 - Add `https://mystreamer.duckdns.org/super-secret-token/manifest.json` inside Stremio.
 

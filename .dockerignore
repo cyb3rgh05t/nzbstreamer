@@ -6,7 +6,11 @@ Dockerfile
 .gitignore
 .env
 config/runtime-env.json
+config/nzbdavex/
 config/*.json
+vendor/nzbdavex/backend/bin/
+vendor/nzbdavex/backend/obj/
+vendor/nzbdavex/publish/
 *.md~
 
 

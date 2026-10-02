@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="/assets/icon.png" />
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="vendor/tom-select/css/tom-select.default.min.css" />
-  <link rel="stylesheet" href="styles.css?v=20261008" />
+  <link rel="stylesheet" href="styles.css?v=20261008&login=1" />
   <style>
     /* Profile switcher — a sibling sub-panel matching the form's .group panels,
        with tabs styled as pill buttons using the shared button language. */
@@ -49,24 +49,32 @@
         <div id="settingsNav" class="sidebar-links"></div>
       </nav>
       <div class="sidebar-footer">
-        <button type="button" id="authSettingsButton" class="sidebar-link" hidden><i data-lucide="lock-keyhole" aria-hidden="true"></i>Admin access</button>
+        <button type="button" id="authSettingsButton" class="sidebar-link" hidden><i data-lucide="log-out" aria-hidden="true"></i>Sign out</button>
         <a class="sidebar-help" href="help.html"><i data-lucide="circle-help" aria-hidden="true"></i>Help &amp; Reference</a>
       </div>
     </aside>
     <header>
-      <div class="page-identity"><h1>NZBStreamer</h1><span aria-hidden="true">/</span><strong id="currentViewTitle">Authentication</strong></div>
+      <div class="page-identity"><h1>NZBStreamer</h1><span aria-hidden="true">/</span><strong id="currentViewTitle">Sign in</strong></div>
       <span class="version-badge hidden" id="addonVersionBadge"></span>
     </header>
 
     <section class="card auth-card">
-      <h2>Authentication</h2>
-  <p class="hint">Enter your admin token (<code>ADDON_SHARED_SECRET</code>) to access the dashboard. This is the value you set in your Docker/environment config — it cannot be changed here.</p>
-      <p class="warning">Treat this token like a password. If someone has both the token and the public addon URL, they can open the admin panel and modify your settings. Passwords and API keys are never visible - they are write-only.</p>
-      <div class="field-row">
-        <label for="tokenInput">Admin Token</label>
-        <input id="tokenInput" type="password" autocomplete="off" />
+      <div class="login-brand">
+        <img src="/assets/favicon.svg" alt="" />
+        <span>NZBStreamer</span>
       </div>
-      <button id="loadConfig" class="primary">Load Configuration</button>
+
+      <form id="loginForm">
+        <div class="field-row">
+          <label for="usernameInput">Username</label>
+          <input id="usernameInput" name="username" type="text" autocomplete="username" required autofocus />
+        </div>
+        <div class="field-row">
+          <label for="passwordInput">Password</label>
+          <input id="passwordInput" name="password" type="password" autocomplete="current-password" required />
+        </div>
+        <button id="loadConfig" class="secondary" type="submit">Sign in</button>
+      </form>
       <p id="authError" class="error hidden"></p>
     </section>
 
@@ -721,23 +729,32 @@ health'></textarea>
         </section>
 
         <section class="group" id="nzbdavGroup">
-          <h3>NZBDav Connection</h3>
+          <h3>NZBDav Backend</h3>
           <div class="field-grid">
-            <label>NZBDav URL
-              <input name="NZBDAV_URL" type="url" placeholder="http://your-lan-ip:3000 or http://nzbdav:3000" />
+            <label class="wide-field">Streaming backend
+              <select name="NZBDAV_BACKEND" id="nzbdavBackendSelect">
+                <option value="internal">Built-in NZBDavEx</option>
+                <option value="external">External NZBDav-compatible server</option>
+              </select>
             </label>
-            <label>NZBDav API Key
-              <input name="NZBDAV_API_KEY" type="password" autocomplete="new-password" />
-            </label>
-            <label>WebDAV URL
-              <input name="NZBDAV_WEBDAV_URL" type="url" placeholder="http://your-lan-ip:3000 or http://nzbdav:3000" />
-            </label>
-            <label>WebDAV User
-              <input name="NZBDAV_WEBDAV_USER" type="text" />
-            </label>
-            <label>WebDAV Password
-              <input name="NZBDAV_WEBDAV_PASS" type="password" autocomplete="new-password" />
-            </label>
+            <p class="notice wide-field hidden" id="internalNzbdavNotice">NZBDavEx runs inside NZBStreamer. It uses the NNTP provider configured in the Providers section; no separate NZBDav instance is needed.</p>
+            <div class="field-grid wide-field hidden" id="externalNzbdavSettings">
+              <label>NZBDav URL
+                <input name="NZBDAV_URL" type="url" placeholder="http://your-lan-ip:3000 or http://nzbdav:3000" />
+              </label>
+              <label>NZBDav API Key
+                <input name="NZBDAV_API_KEY" type="password" autocomplete="new-password" />
+              </label>
+              <label>WebDAV URL
+                <input name="NZBDAV_WEBDAV_URL" type="url" placeholder="http://your-lan-ip:3000 or http://nzbdav:3000" />
+              </label>
+              <label>WebDAV User
+                <input name="NZBDAV_WEBDAV_USER" type="text" />
+              </label>
+              <label>WebDAV Password
+                <input name="NZBDAV_WEBDAV_PASS" type="password" autocomplete="new-password" />
+              </label>
+            </div>
             <label>Base Category
               <input name="NZBDAV_CATEGORY" type="text" placeholder="Stremio" />
             </label>

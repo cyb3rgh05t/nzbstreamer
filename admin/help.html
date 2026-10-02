@@ -334,10 +334,10 @@
                 <span class="badge badge-green">All platforms</span></span
               >
               <span class="option-desc"
-                >The addon pushes each NZB to <strong>NZBDav</strong>, which
-                downloads and exposes the file over WebDAV. Stremio then streams
-                from that WebDAV URL. Works on every platform — web, mobile,
-                TV.</span
+                >The bundled <strong>NZBDavEx</strong> backend reads the NZB
+                from Usenet and serves the video through an internal WebDAV
+                stream. No separate NZBDav installation is needed. Works on
+                every platform — web, mobile, TV.</span
               >
             </div>
             <div class="option-card">
@@ -357,8 +357,8 @@
             </div>
           </div>
           <div class="tip-box">
-            <strong>Not sure which to pick?</strong> Use NZBDav Mode — it works
-            everywhere and requires less setup on the Stremio side.
+            <strong>Not sure which to pick?</strong> Use NZBDav Mode — its
+            backend is built in and it works on every Stremio platform.
           </div>
         </section>
 
@@ -891,16 +891,22 @@
         <section class="card help-section" id="nzbdav">
           <h2>NZBDav</h2>
           <p>
-            NZBDav is a separate application you run alongside NZBStreamer. It
-            receives NZB files from the addon, downloads them from Usenet, and
-            exposes the decoded video file over WebDAV so Stremio can stream it
-            directly.
+            NZBDav Mode uses the bundled NZBDavEx backend by default. It runs
+            inside NZBStreamer, reads NZBs from Usenet using the NNTP provider
+            configured in the Providers section, and serves the decoded video
+            over an internal WebDAV connection. You do not need a separate
+            NZBDav container or server.
+          </p>
+          <p>
+            Choose <strong>External NZBDav-compatible server</strong> in the
+            backend selector only if you want to keep using another instance.
+            Its URL, API key, and WebDAV credentials are configured in the
+            fields shown for that mode.
           </p>
           <ul>
             <li>
-              <strong>NZBDav URL</strong> — the address of your NZBDav instance
-              (e.g. <code>http://localhost:3000</code>). This is used by the
-              addon to push NZB files to NZBDav.
+              <strong>Built-in NZBDavEx</strong> — the default backend. No
+              external URL or WebDAV credentials are needed.
             </li>
             <li>
               <strong>API Key</strong> — from NZBDav's settings, used to
@@ -989,17 +995,21 @@
         <!-- Tokens & Security -->
         <section class="card help-section" id="tokens">
           <h2>Tokens &amp; Security</h2>
-          <p>NZBStreamer uses two separate tokens to control access:</p>
+          <p>
+            NZBStreamer separates dashboard login from Stremio stream access:
+          </p>
           <div class="option-grid">
             <div class="option-card">
               <span class="option-name"
-                >Admin Token <code>ADDON_SHARED_SECRET</code></span
+                >Admin Login <code>ADMIN_USERNAME</code> /
+                <code>ADMIN_PASSWORD</code></span
               >
               <span class="option-desc"
-                >Protects the Control Panel. Set this in your Docker/environment
-                config before starting the addon. It cannot be changed through
-                the UI. Anyone with this token can read and change all your
-                settings.</span
+                >Protects the Control Panel with a username and password. Set
+                <code>ADMIN_PASSWORD</code>; existing installs can continue
+                using <code>ADDON_SHARED_SECRET</code> as a fallback. The
+                username defaults to <code>admin</code>. A 12-hour HttpOnly
+                session cookie keeps the browser signed in.</span
               >
             </div>
             <div class="option-card">
@@ -1021,9 +1031,10 @@
             reinstall the addon in Stremio with the new URL.
           </p>
           <div class="warn-box">
-            <strong>Keep both tokens private.</strong> If your addon is publicly
-            reachable, anyone who finds the stream token can use your indexers
-            and download client. Use a long random string for both tokens.
+            <strong>Keep your admin password and stream token private.</strong>
+            If your addon is publicly reachable, anyone who finds the stream
+            token can use your indexers and download client. Use a long, unique
+            password for the dashboard and a separate random stream token.
           </div>
         </section>
       </div>

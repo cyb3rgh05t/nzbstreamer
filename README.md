@@ -8,8 +8,8 @@
 </p>
 <br />
 <p align="center">
-  <strong>Your Usenet-powered bridge between Prowlarr/NZBHydra, NZBDav, and Stremio.</strong><br />
-  Query your favorite indexers, stream directly over WebDAV, and manage it all from a friendly web dashboard.
+  <strong>Your Usenet-powered bridge between Prowlarr/NZBHydra and Stremio.</strong><br />
+  Query indexers and stream through the bundled NZBDavEx engine or Stremio's native NZB support.
 </p>
 
 <p align="center">
@@ -23,7 +23,7 @@
 ## 🔗 Quick Links
 
 - **Docker image:** `ghcr.io/sanket9225/usenetstreamer:latest`
-- **Admin dashboard:** `https://your-addon-domain/<admin-token (ADDON_SHARED_SECRET)>/admin/`
+- **Admin dashboard:** `https://your-addon-domain/admin/` (sign in with your admin credentials)
 - **Manifest template:** `https://your-addon-domain/<stream-token>/manifest.json`
 - **Discord:** [Community chat](https://discord.gg/tUwNjXSZZN)
 - **Sponsor:** [GitHub Sponsors](https://github.com/sponsors/Sanket9225)
@@ -85,8 +85,9 @@
 
 ### 🔐 Secure-by-Default
 
-- **Admin token** (`ADDON_SHARED_SECRET`) — used to access the admin dashboard where you can edit settings and credentials. Credentials are write-only (never exposed back to the UI).
+- **Admin login** — use `ADMIN_USERNAME` (default `admin`) and `ADMIN_PASSWORD` to sign in. Existing installs can omit `ADMIN_PASSWORD` and keep using `ADDON_SHARED_SECRET` as a fallback. The dashboard uses an expiring HttpOnly session cookie; credentials and API keys are never exposed back to the UI.
 - **Stream token** (`ADDON_STREAM_TOKEN`) — a separate token used only for streaming; it cannot access the admin dashboard or modify any settings.
+- **Bundled NZBDavEx backend** — NZBDav Mode runs its streaming engine inside the NZBStreamer deployment; Docker images include the .NET 10 runtime. Direct `npm start` runs need .NET 10 installed. The backend's MIT license is included at [vendor/nzbdavex/LICENSE](vendor/nzbdavex/LICENSE).
 
 ---
 
@@ -96,7 +97,7 @@
 2. **Indexer search:** UsenetStreamer plans IMDb/TMDb/TVDb/anime-ID searches plus fallbacks and queries Prowlarr/NZBHydra simultaneously.
 3. **Release parsing:** Titles are normalized for resolution, size, and language; oversize files above your cap are dropped.
 4. **Triage & caching (optional):** Health checks sample NZBs via NNTP; decisions and NZBs are cached.
-5. **NZBDav streaming:** Chosen NZBs feed NZBDav, which exposes a WebDAV stream back to Stremio.
+5. **NZBDav streaming:** The bundled NZBDavEx backend reads chosen NZBs from Usenet and exposes an internal WebDAV stream to Stremio. An external NZBDav-compatible backend remains optional.
 6. **Instant detection:** Completed NZBDav jobs are matched by normalized title and tagged ⚡ for instant playback.
 
 ---
@@ -112,7 +113,8 @@ docker run -d --restart unless-stopped \
   --log-opt max-size=10m \
   --log-opt max-file=1 \
   -p 7000:7000 \
-  -e ADDON_SHARED_SECRET=super-secret-token \
+  -e ADMIN_USERNAME=admin \
+  -e ADMIN_PASSWORD=choose-a-strong-password \
   -e CONFIG_DIR=/data/config \
   -v ~/usenetstreamer-config:/data/config \
   ghcr.io/sanket9225/usenetstreamer:latest
@@ -175,10 +177,11 @@ The dashboard and stream routes are protected by secret tokens. Rotate secrets/t
 
 - **Indexer sources:** `INDEXER_MANAGER` (`none`, `prowlarr`, `nzbhydra`), `INDEXER_MANAGER_URL`, `INDEXER_MANAGER_API_KEY`, `INDEXER_MANAGER_INDEXERS`, `INDEXER_MANAGER_STRICT_ID_MATCH`.
 - **Direct Newznab mode:** `NEWZNAB_ENABLED`, `NEWZNAB_FILTER_NZB_ONLY`, numbered `NEWZNAB_*` entries, optional `NEWZNAB_CAPS_CACHE`.
-- **Addon security + routing:** `ADDON_BASE_URL` (HTTPS), `ADDON_SHARED_SECRET` (required), optional `ADDON_STREAM_TOKEN` (separate stream token).
+- **Addon security + routing:** `ADDON_BASE_URL` (HTTPS), `ADMIN_PASSWORD` (or legacy `ADDON_SHARED_SECRET` fallback), optional `ADDON_STREAM_TOKEN` (separate stream token).
 - **Sorting + filtering:** `NZB_SORT_MODE` (legacy/back-compat), `NZB_SORT_ORDER` (priority chain, default `quality,size,files`), `NZB_PREFERRED_LANGUAGE`, `NZB_DEDUP_ENABLED`, `NZB_MAX_RESULT_SIZE_GB`, `NZB_ALLOWED_RESOLUTIONS`, `NZB_RESOLUTION_LIMIT_PER_QUALITY`, `NZB_RELEASE_EXCLUSIONS`.
 - **Stream naming:** `NZB_DISPLAY_NAME_PATTERN`, `NZB_NAMING_PATTERN` with token-list support (`title`, `stream_quality`, `source`, `codec`, `group`, `size`, `files`, `date`, `languages`, `indexer`, `health`, etc.).
-- **NZBDav:** `NZBDAV_URL`, `NZBDAV_API_KEY`, WebDAV credentials, category controls, and history/cache options.
+- **NZBDav backend:** `NZBDAV_BACKEND` (`internal` or `external`; new installs default to `internal`). `NZBDAV_URL`, API key, and WebDAV credentials are only needed for `external`. The built-in backend uses the NNTP provider configured in NZBStreamer.
+- **Container logs:** Logs are grouped by subsystem and credentials are redacted. Docker images use ANSI colors; `LOG_COLORS=never` disables them. `LOG_TIMESTAMPS=never` omits the app timestamp when the container platform already adds one.
 - **Easynews:** `EASYNEWS_ENABLED`, `EASYNEWS_USERNAME`, `EASYNEWS_PASSWORD`, optional size/text-mode flags.
 - **TMDb/TVDb/anime metadata assist:** `TMDB_ENABLED`, `TMDB_API_KEY`, `TMDB_SEARCH_MODE` (`english_only` / `english_and_regional`), `TMDB_SEARCH_LANGUAGES`, `TVDB_ENABLED`, `TVDB_API_KEY`, plus built-in anime ID mapping support.
 - **Stream protection + health checks:** `NZB_STREAM_PROTECTION`, `NZB_AUTO_ADVANCE_STRATEGY`, `NZB_SMART_PLAY_MODE`, and `NZB_TRIAGE_*` NNTP/triage controls.

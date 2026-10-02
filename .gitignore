@@ -20,12 +20,16 @@ pids
 .env.local
 .env.*.local
 config/runtime-env.json
+config/nzbdavex/
 
 # Build outputs
 dist/
 build/
 coverage/
 .nyc_output/
+vendor/nzbdavex/backend/bin/
+vendor/nzbdavex/backend/obj/
+vendor/nzbdavex/publish/
 
 # OS artifacts
 .DS_Store

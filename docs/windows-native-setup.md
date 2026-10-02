@@ -65,20 +65,22 @@ docker run -d `
   -v usenetstreamer_config:/app/config `
   -e STREAMING_MODE=native `
   -e ADDON_BASE_URL=http://localhost:7000 `
-  -e ADDON_SHARED_SECRET=MySecretToken123 `
+  -e ADMIN_USERNAME=admin `
+  -e ADMIN_PASSWORD=ChooseAStrongPassword `
   ghcr.io/sanket9225/usenetstreamer:latest
 ```
 
-> **📝 Note:** Change `MySecretToken123` to your own secret password. This protects your admin panel from unauthorized access.
+> **📝 Note:** Replace `ChooseAStrongPassword` with a unique password for your admin login.
 
 This will:
+
 - Download the UsenetStreamer image
 - Create a container named `usenetstreamer`
 - Set it to auto-restart on boot
 - Save your configuration so it persists after updates
 - Expose port 7000 for the addon
 - Enable Windows Native streaming mode
-- Protect your admin panel with a token
+- Protect your admin panel with a username and password
 
 ### Step 3: Verify Container is Running
 
@@ -97,9 +99,8 @@ You should see `usenetstreamer` in the list with status "Up".
 ### Step 1: Open the Admin Panel
 
 1. Open your web browser
-2. Go to: **http://localhost:7000/admin**
-3. In the **"Change Token"** field, enter the token you set in the docker command (e.g., `MySecretToken123`)
-4. Click **"Load Configuration"**
+2. Go to: **http://localhost:7000/admin/**
+3. Sign in with username `admin` and the `ADMIN_PASSWORD` you set in the docker command.
 
 ### Step 2: Configure Streaming Mode
 
@@ -128,15 +129,15 @@ These credentials are used for both health checking NZBs AND for streaming in na
 2. Check **"Enable NZB Health Checks"**
 3. Fill in your Usenet provider details:
 
-| Field | Example Value | Notes |
-|-------|---------------|-------|
-| **Usenet Provider Host** | `news.easynews.com` | Your provider's NNTP server |
-| **Usenet Provider Port** | `563` | Usually 563 for SSL, 119 for non-SSL |
-| **Use TLS** | ☑️ Checked | Enable for secure connection |
-| **Username** | `your_username` | Your Usenet account username |
-| **Password** | `your_password` | Your Usenet account password |
-| **Number of NZBs to Inspect** | `6` | Higher = more thorough, slower |
-| **Max Usenet Connections** | `12` | Stay within your provider's limit |
+| Field                         | Example Value       | Notes                                |
+| ----------------------------- | ------------------- | ------------------------------------ |
+| **Usenet Provider Host**      | `news.easynews.com` | Your provider's NNTP server          |
+| **Usenet Provider Port**      | `563`               | Usually 563 for SSL, 119 for non-SSL |
+| **Use TLS**                   | ☑️ Checked          | Enable for secure connection         |
+| **Username**                  | `your_username`     | Your Usenet account username         |
+| **Password**                  | `your_password`     | Your Usenet account password         |
+| **Number of NZBs to Inspect** | `6`                 | Higher = more thorough, slower       |
+| **Max Usenet Connections**    | `12`                | Stay within your provider's limit    |
 
 4. Click **"Test Connection"** to verify your NNTP credentials work
 
@@ -163,9 +164,11 @@ These credentials are used for both health checking NZBs AND for streaming in na
 ### Step 2: Install the Addon
 
 **Option A: Use the Admin Panel Button**
+
 1. In the admin panel, click **"Install via Stremio Web"** or **"Open in Stremio App"**
 
 **Option B: Manual Install**
+
 1. In Stremio, go to **Settings** → **Addons**
 2. Click the search bar or "Add Addon" button
 3. Paste this URL: `http://localhost:7000/manifest.json`
@@ -203,6 +206,7 @@ These credentials are used for both health checking NZBs AND for streaming in na
 ### Container Not Starting
 
 Check container logs:
+
 ```powershell
 docker logs usenetstreamer
 ```
@@ -210,11 +214,13 @@ docker logs usenetstreamer
 ### Port 7000 Already in Use
 
 Change to a different port:
+
 ```powershell
 docker stop usenetstreamer
 docker rm usenetstreamer
 docker run -d --name usenetstreamer --restart unless-stopped -p 7001:7000 -e STREAMING_MODE=native -e ADDON_BASE_URL=http://localhost:7001 ghcr.io/sanket9225/usenetstreamer:latest
 ```
+
 Then use `http://localhost:7001` everywhere.
 
 ### Streams Not Playing
@@ -226,25 +232,27 @@ Then use `http://localhost:7001` everywhere.
 ### Reset Configuration
 
 To start fresh:
+
 ```powershell
 docker stop usenetstreamer
 docker rm usenetstreamer
 docker volume rm usenetstreamer_config
 ```
+
 Then re-run the docker run command from Part 2.
 
 ---
 
 ## Common Usenet Provider Settings
 
-| Provider | Host | SSL Port | Non-SSL Port |
-|----------|------|----------|--------------|
-| Easynews | `news.easynews.com` | 563 | 119 |
-| Newshosting | `news.newshosting.com` | 563 | 119 |
-| Eweka | `news.eweka.nl` | 563 | 119 |
-| Frugal Usenet | `news.frugalusenet.com` | 563 | 119 |
-| UsenetExpress | `news.usenetexpress.com` | 563 | 119 |
-| Ninja | `news.newsgroup.ninja` | 563 | 119 |
+| Provider      | Host                     | SSL Port | Non-SSL Port |
+| ------------- | ------------------------ | -------- | ------------ |
+| Easynews      | `news.easynews.com`      | 563      | 119          |
+| Newshosting   | `news.newshosting.com`   | 563      | 119          |
+| Eweka         | `news.eweka.nl`          | 563      | 119          |
+| Frugal Usenet | `news.frugalusenet.com`  | 563      | 119          |
+| UsenetExpress | `news.usenetexpress.com` | 563      | 119          |
+| Ninja         | `news.newsgroup.ninja`   | 563      | 119          |
 
 ---
 

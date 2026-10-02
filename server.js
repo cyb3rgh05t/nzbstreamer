@@ -1,4 +1,31 @@
-require("dotenv").config();
+const fs = require("fs");
+const path = require("path");
+const envFilePath = path.resolve(process.cwd(), ".env");
+require("dotenv").config({ path: envFilePath });
+
+let envFileFormat = "dotenv";
+let jsonEnvValuesLoaded = 0;
+const jsonEnvValues = {};
+try {
+  const jsonEnv = JSON.parse(fs.readFileSync(envFilePath, "utf8"));
+  if (jsonEnv && typeof jsonEnv === "object" && !Array.isArray(jsonEnv)) {
+    envFileFormat = "json";
+    for (const [key, value] of Object.entries(jsonEnv)) {
+      if (
+        /^[A-Za-z_][A-Za-z0-9_]*$/.test(key) &&
+        ["string", "number", "boolean"].includes(typeof value)
+      ) {
+        jsonEnvValues[key] = String(value);
+        if (process.env[key] === undefined) {
+          process.env[key] = String(value);
+          jsonEnvValuesLoaded += 1;
+        }
+      }
+    }
+  }
+} catch {
+  // A standard KEY=value .env file is already handled by dotenv above.
+}
 
 // Global safety net: prevent unhandled errors from crashing the server.
 // This catches socket-level errors (e.g. NNTP TLS EACCES) that escape all other handlers.
@@ -21,15 +48,23 @@ const express = require("express");
 const axios = require("axios");
 const FormData = require("form-data");
 const cors = require("cors");
-const fs = require("fs");
 const { pipeline } = require("stream");
 const { promisify } = require("util");
 // webdav is an ES module; we'll import it lazily when first needed
-const path = require("path");
 const runtimeEnv = require("./config/runtimeEnv");
 
 // Apply runtime environment BEFORE loading any services
 runtimeEnv.applyRuntimeEnv();
+const {
+  installConsoleLogging,
+  requestMiddleware,
+  info: logInfo,
+  refreshSecrets,
+} = require("./src/utils/logging");
+installConsoleLogging();
+const embeddedNzbdav = require("./src/services/embeddedNzbdav");
+embeddedNzbdav.configure();
+refreshSecrets();
 
 // One-time startup migrations: retire legacy config fields that were dropped
 // from the UI but still applied silently (e.g. NZB_RELEASE_EXCLUSIONS, where a
@@ -87,6 +122,12 @@ const {
   ensureAdminSecret,
   ensureStreamToken,
   getEffectiveStreamToken,
+  ADMIN_SESSION_TTL_MS,
+  authenticateAdminCredentials,
+  createAdminSession,
+  hasAdminSession,
+  destroyAdminSession,
+  getAdminSessionCookie,
 } = require("./src/middleware/auth");
 const newznabService = require("./src/services/newznab");
 const easynewsService = require("./src/services/easynews");
@@ -325,6 +366,7 @@ async function resolvePrefetchedNzbdavJob(downloadUrl) {
   return entry;
 }
 
+app.use(requestMiddleware);
 app.use(cors());
 
 // ---------------------------------------------------------------------------
@@ -340,7 +382,7 @@ app.use((req, res, next) => {
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
-// Global guard: ADDON_SHARED_SECRET is mandatory since v1.7.6.
+// Require admin authentication before exposing the addon.
 // Without it, every route returns 503 except a helpful setup hint.
 // ---------------------------------------------------------------------------
 const SETUP_HTML = `<!DOCTYPE html>
@@ -349,14 +391,15 @@ const SETUP_HTML = `<!DOCTYPE html>
 .box{max-width:520px;padding:2rem;border:1px solid #333;border-radius:8px;background:#161b22}
 h1{color:#f85149;margin-top:0}code{background:#0d1117;padding:2px 6px;border-radius:4px;font-size:0.95em}</style></head>
 <body><div class="box"><h1>Setup Required</h1>
-<p><strong>ADDON_SHARED_SECRET</strong> is not configured. Since v1.7.6 this is mandatory.</p>
-<p>Set it in your Docker environment or <code>.env</code> file:</p>
-<pre><code>ADDON_SHARED_SECRET=your-secret-here</code></pre>
+<p>Admin authentication is not configured.</p>
+<p>Set <code>ADMIN_PASSWORD</code> in your Docker environment or <code>.env</code> file. Existing installs may use <code>ADDON_SHARED_SECRET</code> as a fallback:</p>
+<pre><code>ADMIN_PASSWORD=your-strong-password</code></pre>
 <p>Then restart the container. The admin panel and all streaming endpoints will remain locked until this is set.</p></div></body></html>`;
 
 app.use((req, res, next) => {
-  const secret = (process.env.ADDON_SHARED_SECRET || "").trim();
-  if (secret) return next();
+  const adminPassword = process.env.ADMIN_PASSWORD || "";
+  const legacySecret = process.env.ADDON_SHARED_SECRET || "";
+  if (adminPassword.trim() || legacySecret.trim()) return next();
   // Allow assets so the error page could reference them in future
   if (req.path.startsWith("/assets/")) return next();
   const wantsJson =
@@ -365,7 +408,7 @@ app.use((req, res, next) => {
   if (wantsJson) {
     res.status(503).json({
       error:
-        "ADDON_SHARED_SECRET is not configured. Set it in your Docker/environment config and restart.",
+        "Admin authentication is not configured. Set ADMIN_PASSWORD or ADDON_SHARED_SECRET and restart.",
     });
     return;
   }
@@ -395,8 +438,61 @@ const adminStatic = express.static(path.join(__dirname, "admin"), {
 // as a UI warning instead of a hard freeze.
 const FROZEN_KEYS = new Set(["ADDON_SHARED_SECRET"]);
 
+function isAllowedAdminOrigin(req) {
+  const origin = req.headers.origin;
+  if (!origin) return true;
+  const allowed = [];
+  const addonBase = (process.env.ADDON_BASE_URL || "").trim();
+  if (addonBase) allowed.push(addonBase.replace(/\/+$/, ""));
+  const host = req.headers.host;
+  if (host) {
+    allowed.push(`http://${host}`, `https://${host}`);
+  }
+  return allowed.includes(origin.replace(/\/+$/, ""));
+}
+
+app.post(
+  "/admin/api/auth/login",
+  express.json({ limit: "16kb" }),
+  (req, res) => {
+    if (!isAllowedAdminOrigin(req)) {
+      res.status(403).json({ error: "Forbidden: cross-origin login rejected" });
+      return;
+    }
+    const result = authenticateAdminCredentials(
+      req.body?.username,
+      req.body?.password,
+      req,
+    );
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+    const sessionId = createAdminSession();
+    res.setHeader("Set-Cookie", getAdminSessionCookie(sessionId, req));
+    res.json({ authenticated: true, expiresIn: ADMIN_SESSION_TTL_MS });
+  },
+);
+
+app.get("/admin/api/auth/session", (req, res) => {
+  res.json({ authenticated: hasAdminSession(req) });
+});
+
+app.post("/admin/api/auth/logout", (req, res) => {
+  if (!isAllowedAdminOrigin(req)) {
+    res.status(403).json({ error: "Forbidden: cross-origin logout rejected" });
+    return;
+  }
+  destroyAdminSession(req);
+  res.setHeader("Set-Cookie", getAdminSessionCookie("", req, true));
+  res.status(204).end();
+});
+
 adminApiRouter.get("/config", (req, res) => {
   const values = collectConfigValues(ADMIN_CONFIG_KEYS);
+  if (!values.NZBDAV_BACKEND) {
+    values.NZBDAV_BACKEND = values.NZBDAV_URL?.trim() ? "external" : "internal";
+  }
   if (!values.STREAMING_MODE) {
     values.STREAMING_MODE = "nzbdav";
   }
@@ -622,6 +718,7 @@ adminApiRouter.post("/config", async (req, res) => {
   try {
     runtimeEnv.updateRuntimeEnv(updates);
     runtimeEnv.applyRuntimeEnv();
+    refreshSecrets();
 
     // Use unsentineled values: `incoming` still has masked sentinels for credential
     // fields (API keys + credential-bearing proxy URLs). applyRuntimeEnv() above
@@ -672,6 +769,8 @@ adminApiRouter.post("/config", async (req, res) => {
     backgroundTriage.closeAllSessions("admin-config-save");
     autoAdvanceQueue.closeAllSessions("admin-config-save");
     const { portChanged } = rebuildRuntimeConfig();
+    await embeddedNzbdav.reconfigure();
+    nzbdavService.reloadConfig();
     if (portChanged) {
       await restartHttpServer();
     } else {
@@ -844,7 +943,13 @@ adminApiRouter.post("/test-connections", async (req, res) => {
         message = await testIndexerConnection(values);
         break;
       case "nzbdav":
-        message = await testNzbdavConnection(values);
+        if (values.NZBDAV_BACKEND === "internal") {
+          const backendMessage = await embeddedNzbdav.testConnection();
+          const providerMessage = await testUsenetConnection(values);
+          message = `${backendMessage} ${providerMessage}`;
+        } else {
+          message = await testNzbdavConnection(values);
+        }
         break;
       case "usenet":
         message = await testUsenetConnection(values);
@@ -1858,6 +1963,7 @@ const ADMIN_CONFIG_KEYS = [
   "NZB_NAMING_PATTERN",
   "NZB_DISPLAY_NAME_PATTERN",
   "NZBDAV_URL",
+  "NZBDAV_BACKEND",
   "NZBDAV_API_KEY",
   "NZBDAV_WEBDAV_URL",
   "NZBDAV_WEBDAV_USER",
@@ -7298,7 +7404,17 @@ function startHttpServer() {
   const headersTimeoutMs = 70000;
 
   serverInstance = app.listen(currentPort, SERVER_HOST, () => {
-    console.log(`Addon running at http://${SERVER_HOST}:${currentPort}`);
+    logInfo("HTTP/FRONTEND", "Add-on listener started", {
+      bindAddress: SERVER_HOST,
+      port: currentPort,
+      publicOrigin: (() => {
+        try {
+          return new URL(ADDON_BASE_URL).origin;
+        } catch {
+          return null;
+        }
+      })(),
+    });
   });
   serverInstance.keepAliveTimeout = keepAliveTimeoutMs;
   serverInstance.headersTimeout = headersTimeoutMs;
@@ -7325,18 +7441,108 @@ async function restartHttpServer() {
   startHttpServer();
 }
 
-startHttpServer();
+async function startApplication() {
+  try {
+    if (embeddedNzbdav.isEnabled()) await embeddedNzbdav.start();
+    logStartupConfiguration();
+    startHttpServer();
+  } catch (error) {
+    console.error("[FATAL] Internal NZBDav failed to start:", error.message);
+    process.exitCode = 1;
+  }
+}
+
+function logStartupConfiguration() {
+  const nntpHost = (process.env.NZB_TRIAGE_NNTP_HOST || "").trim();
+  const runtimeValues = runtimeEnv.getRuntimeEnv();
+  const runtimeOverrideKeys = Object.keys(runtimeValues)
+    .filter(
+      (key) =>
+        Object.prototype.hasOwnProperty.call(jsonEnvValues, key) &&
+        String(runtimeValues[key]) !== jsonEnvValues[key],
+    )
+    .sort();
+  const adminPasswordConfigured = Boolean(
+    (process.env.ADMIN_PASSWORD || ADDON_SHARED_SECRET || "").trim(),
+  );
+  const nntpConfigured = Boolean(nntpHost);
+
+  logInfo("STARTUP/CONFIG", "Configuration sources", {
+    envFileFormat,
+    envFilePresent: fs.existsSync(envFilePath),
+    jsonValuesLoaded: jsonEnvValuesLoaded,
+    runtimeEnvValues: Object.keys(runtimeEnv.getRuntimeEnv()).length,
+    runtimeOverridesJsonKeys: runtimeOverrideKeys,
+    runtimeFile: path.basename(runtimeEnv.RUNTIME_ENV_FILE),
+  });
+  logInfo("STARTUP/SECURITY", "Access controls", {
+    adminLoginConfigured: adminPasswordConfigured,
+    legacySharedSecretConfigured: Boolean(ADDON_SHARED_SECRET),
+    streamTokenConfigured: Boolean(ADDON_STREAM_TOKEN),
+    manifestPath: "/<stream-token>/manifest.json",
+    adminSessionHours: Math.round(ADMIN_SESSION_TTL_MS / (60 * 60 * 1000)),
+  });
+  logInfo("STARTUP/INDEXERS", "Indexer sources", {
+    manager: INDEXER_MANAGER,
+    managerUrlConfigured: Boolean(INDEXER_MANAGER_URL),
+    enabledDirectNewznab: ACTIVE_NEWZNAB_CONFIGS.length,
+  });
+  logInfo("STARTUP/NNTP", "Usenet provider", {
+    configured: nntpConfigured,
+    server: nntpHost || null,
+    port: Number(process.env.NZB_TRIAGE_NNTP_PORT) || 119,
+    tls: toBoolean(process.env.NZB_TRIAGE_NNTP_TLS, false),
+    maxConnections: Number(process.env.NZB_TRIAGE_NNTP_MAX_CONNECTIONS) || 12,
+    triageEnabled: TRIAGE_ENABLED,
+  });
+  logInfo("STARTUP/NZBDAV", "Streaming backend", {
+    mode: STREAMING_MODE,
+    backend: embeddedNzbdav.isEnabled() ? "built-in NZBDavEx" : "external",
+    externalUrlConfigured:
+      !embeddedNzbdav.isEnabled() && Boolean(process.env.NZBDAV_URL),
+    providerSynchronized: embeddedNzbdav.isEnabled() && nntpConfigured,
+  });
+  logInfo("STARTUP/METADATA", "Metadata providers", {
+    tmdbEnabled: toBoolean(process.env.TMDB_ENABLED, false),
+    tmdbApiKeyConfigured: Boolean(process.env.TMDB_API_KEY),
+    tvdbEnabled: toBoolean(process.env.TVDB_ENABLED, false),
+    tvdbApiKeyConfigured: Boolean(process.env.TVDB_API_KEY),
+  });
+}
+
+function shutdownApplication() {
+  Promise.all([
+    embeddedNzbdav.stop(),
+    new Promise((resolve) => {
+      if (serverInstance) serverInstance.close(resolve);
+      else resolve();
+    }),
+  ]).finally(() => process.exit(0));
+}
+
+process.once("SIGINT", shutdownApplication);
+process.once("SIGTERM", shutdownApplication);
+startApplication();
 
 // Startup security checks (v1.7.6+)
-if (!ADDON_SHARED_SECRET) {
+const hasConfiguredAdminPassword = Boolean(
+  (process.env.ADMIN_PASSWORD || ADDON_SHARED_SECRET || "").trim(),
+);
+if (!hasConfiguredAdminPassword) {
   console.error(
-    "[SECURITY] ✖ ADDON_SHARED_SECRET is NOT set — all endpoints are locked (503).",
+    "[SECURITY] ✖ No admin password is configured — all endpoints are locked (503).",
   );
   console.error(
-    "[SECURITY] ✖ Set ADDON_SHARED_SECRET in your Docker environment or .env file and restart.",
+    "[SECURITY] ✖ Set ADMIN_PASSWORD or legacy ADDON_SHARED_SECRET and restart.",
+  );
+} else if (process.env.ADMIN_PASSWORD && !ADDON_SHARED_SECRET) {
+  console.log(
+    "[SECURITY] ✓ Dedicated admin password configured; ADDON_SHARED_SECRET is not required.",
   );
 } else if (ADDON_STREAM_TOKEN && ADDON_STREAM_TOKEN !== ADDON_SHARED_SECRET) {
-  console.log("[SECURITY] ✓ Admin token and stream token are separate — good.");
+  console.log(
+    "[SECURITY] Admin login and stream access use separate credentials.",
+  );
 } else {
   console.log("[SECURITY] ✓ ADDON_SHARED_SECRET is set.");
 }

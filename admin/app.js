@@ -1,6 +1,7 @@
 (function () {
-  const storageKey = "usenetstreamer.adminToken";
-  const tokenInput = document.getElementById("tokenInput");
+  const loginForm = document.getElementById("loginForm");
+  const usernameInput = document.getElementById("usernameInput");
+  const passwordInput = document.getElementById("passwordInput");
   const loadButton = document.getElementById("loadConfig");
   const authError = document.getElementById("authError");
   const configSection = document.getElementById("configSection");
@@ -98,6 +99,11 @@
   const addonBaseUrlInput = document.querySelector('[name="ADDON_BASE_URL"]');
   const indexerManagerGroup = document.getElementById("indexerManagerGroup");
   const nzbdavGroup = document.getElementById("nzbdavGroup");
+  const nzbdavBackendSelect = document.getElementById("nzbdavBackendSelect");
+  const externalNzbdavSettings = document.getElementById(
+    "externalNzbdavSettings",
+  );
+  const internalNzbdavNotice = document.getElementById("internalNzbdavNotice");
   const easynewsHttpsWarning = document.getElementById("easynewsHttpsWarning");
 
   let currentManifestUrl = "";
@@ -357,35 +363,9 @@
     });
   }
 
-  function getStoredToken() {
-    return localStorage.getItem(storageKey) || "";
-  }
-
-  function extractTokenFromPath() {
-    const match = window.location.pathname.match(/^\/([^/]+)\/admin(?:\/|$)/i);
-    return match ? decodeURIComponent(match[1]) : "";
-  }
-
-  function setStoredToken(token) {
-    if (!token) {
-      localStorage.removeItem(storageKey);
-      return;
-    }
-    localStorage.setItem(storageKey, token);
-  }
-
-  function getToken() {
-    return tokenInput.value.trim();
-  }
-
-  function setToken(token) {
-    tokenInput.value = token;
-    setStoredToken(token);
-  }
-
   function markLoading(isLoading) {
     loadButton.disabled = isLoading;
-    loadButton.textContent = isLoading ? "Loading..." : "Load Configuration";
+    loadButton.textContent = isLoading ? "Signing in..." : "Sign in";
   }
 
   function markSaving(isSaving) {
@@ -1501,11 +1481,7 @@
   }
 
   async function apiRequest(path, options = {}) {
-    const token = getToken();
     const headers = Object.assign({}, options.headers || {});
-    if (token) {
-      headers["X-Addon-Token"] = token;
-    }
 
     if (options.body) {
       headers["Content-Type"] = "application/json";
@@ -1520,11 +1496,8 @@
       } catch (err) {
         // ignore json parse errors
       }
-      if (response.status === 401) {
-        throw new Error(
-          "Unauthorized: enter your admin token again and reload the configuration.",
-        );
-      }
+      if (response.status === 401)
+        throw new Error("Your admin session expired. Sign in again.");
       throw new Error(message || "Request failed");
     }
     if (response.status === 204) return null;
@@ -1640,25 +1613,6 @@
 
   // ... (existing functions)
 
-  // Initialization
-  function init() {
-    const storedToken = getStoredToken();
-    if (storedToken) {
-      tokenInput.value = storedToken;
-    }
-
-    if (loadButton) {
-      loadButton.addEventListener("click", () => {
-        setStoredToken(tokenInput.value);
-        loadConfiguration().then(() => {
-          setupPatternPreview(); // Init preview after load
-        });
-      });
-    }
-
-    // The submit handler below owns saving; the button submits this form.
-  }
-
   function isSettingsSectionAvailable(section) {
     return (
       !section.classList.contains("hidden") &&
@@ -1749,11 +1703,17 @@
     });
     document
       .getElementById("authSettingsButton")
-      .addEventListener("click", () => {
-        document.body.classList.toggle("auth-open");
-        if (document.body.classList.contains("auth-open"))
-          currentViewTitle.textContent = "Admin access";
-        else syncSettingsNavigation();
+      .addEventListener("click", async () => {
+        try {
+          await apiRequest("/admin/api/auth/logout", { method: "POST" });
+        } catch (error) {
+          // Clear the local view even if the session has already expired.
+        }
+        configSection.classList.add("hidden");
+        document.body.classList.remove("has-config");
+        document.body.classList.add("auth-open");
+        currentViewTitle.textContent = "Sign in";
+        usernameInput.focus();
       });
     const categories = [
       "Streams",
@@ -2342,6 +2302,12 @@
     return Boolean(prefetchToggle);
   }
 
+  function syncNzbdavBackendControls() {
+    const isExternal = nzbdavBackendSelect?.value === "external";
+    externalNzbdavSettings?.classList.toggle("hidden", !isExternal);
+    internalNzbdavNotice?.classList.toggle("hidden", isExternal);
+  }
+
   function syncStreamingModeControls() {
     const mode = streamingModeSelect?.value || "nzbdav";
     const isNativeMode = mode === "native";
@@ -2369,6 +2335,7 @@
     if (nzbdavGroup) {
       nzbdavGroup.classList.toggle("hidden", isNativeMode);
     }
+    syncNzbdavBackendControls();
 
     // Native mode forces newznab-only ONLY on HTTP (the addon must hand Stremio
     // the indexer's direct HTTPS link, and manager links are usually local/HTTP).
@@ -2534,9 +2501,27 @@
     }
   }
 
-  loadButton.addEventListener("click", () => {
-    setStoredToken(getToken());
-    loadConfiguration();
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    authError.classList.add("hidden");
+    markLoading(true);
+    try {
+      await apiRequest("/admin/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({
+          username: usernameInput.value,
+          password: passwordInput.value,
+        }),
+      });
+      passwordInput.value = "";
+      await loadConfiguration();
+      setupPatternPreview();
+    } catch (error) {
+      authError.textContent = error.message;
+      authError.classList.remove("hidden");
+    } finally {
+      markLoading(false);
+    }
   });
 
   configForm.addEventListener("submit", saveConfiguration);
@@ -3077,6 +3062,8 @@
     });
   }
 
+  nzbdavBackendSelect?.addEventListener("change", syncNzbdavBackendControls);
+
   // Re-evaluate native-mode HTTP/HTTPS constraints when the base URL changes,
   // so the warning + manager controls reflect http:// vs https:// live.
   if (addonBaseUrlInput) {
@@ -3474,17 +3461,15 @@
     easynewsPassInput.addEventListener("input", syncSaveGuard);
   }
 
-  const pathToken = extractTokenFromPath();
-  if (pathToken) {
-    setToken(pathToken);
-    loadConfiguration();
-  } else {
-    const initialToken = getStoredToken();
-    if (initialToken) {
-      setToken(initialToken);
-      loadConfiguration();
-    }
-  }
+  apiRequest("/admin/api/auth/session")
+    .then((session) => {
+      if (session.authenticated) {
+        loadConfiguration();
+      } else {
+        document.body.classList.add("auth-open");
+      }
+    })
+    .catch(() => document.body.classList.add("auth-open"));
   function setupReleaseExclusions() {
     const textarea = configForm.querySelector(
       'textarea[name="NZB_RELEASE_EXCLUSIONS"]',
