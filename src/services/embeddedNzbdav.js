@@ -224,26 +224,26 @@ function buildProviderConfig() {
   const providers = host
     ? [
         {
-          type: 1,
-          host,
-          port:
+          Type: 1,
+          Host: host,
+          Port:
             Number.parseInt(process.env.NZB_TRIAGE_NNTP_PORT || "119", 10) ||
             119,
-          useSsl: /^(1|true|yes|on)$/i.test(
+          UseSsl: /^(1|true|yes|on)$/i.test(
             process.env.NZB_TRIAGE_NNTP_TLS || "",
           ),
-          user: (process.env.NZB_TRIAGE_NNTP_USER || "").trim(),
-          pass: process.env.NZB_TRIAGE_NNTP_PASS || "",
-          maxConnections:
+          User: (process.env.NZB_TRIAGE_NNTP_USER || "").trim(),
+          Pass: process.env.NZB_TRIAGE_NNTP_PASS || "",
+          MaxConnections:
             Number.parseInt(
               process.env.NZB_TRIAGE_NNTP_MAX_CONNECTIONS || "12",
               10,
             ) || 12,
-          priority: 0,
+          Priority: 0,
         },
       ]
     : [];
-  return JSON.stringify({ providers });
+  return JSON.stringify({ Providers: providers });
 }
 
 async function syncProviderConfig() {
@@ -251,6 +251,7 @@ async function syncProviderConfig() {
   if (providerSyncPromise) return providerSyncPromise;
 
   providerSyncPromise = (async () => {
+    const expectedProviders = JSON.parse(buildProviderConfig()).Providers;
     const body = new URLSearchParams({
       "usenet.providers": buildProviderConfig(),
     });
@@ -266,6 +267,46 @@ async function syncProviderConfig() {
         result.error || `Provider config update returned ${response.status}`,
       );
     }
+
+    const verifyBody = new URLSearchParams({
+      "config-keys": "usenet.providers",
+    });
+    const verifyResponse = await fetch(`${serviceUrl}/api/get-config`, {
+      method: "POST",
+      headers: { "x-api-key": apiKey },
+      body: verifyBody,
+      signal: AbortSignal.timeout(10000),
+    });
+    const verifyResult = await verifyResponse.json().catch(() => ({}));
+    const configItem = (verifyResult.configItems || []).find(
+      (item) => item.configName === "usenet.providers",
+    );
+    let storedProviders = [];
+    try {
+      storedProviders =
+        JSON.parse(configItem?.configValue || "{}").Providers || [];
+    } catch {
+      storedProviders = [];
+    }
+    const providersMatch =
+      verifyResponse.ok &&
+      verifyResult.status &&
+      storedProviders.length === expectedProviders.length &&
+      expectedProviders.every(
+        (expected, index) =>
+          storedProviders[index]?.Host === expected.Host &&
+          storedProviders[index]?.Port === expected.Port &&
+          storedProviders[index]?.UseSsl === expected.UseSsl,
+      );
+    if (!providersMatch) {
+      throw new Error(
+        "Internal NZBDav did not persist the configured NNTP provider; check provider schema compatibility.",
+      );
+    }
+    console.info("[NZBDAV INTERNAL] NNTP provider config verified", {
+      providerCount: storedProviders.length,
+      host: storedProviders[0]?.Host || "not configured",
+    });
     return true;
   })();
 
