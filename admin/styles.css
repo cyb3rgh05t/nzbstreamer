@@ -2668,12 +2668,6 @@ body:not(.has-config) #authError {
     width: calc(100% - 1.5rem);
     margin: 0.75rem;
   }
-  .help-sidebar .toc-list {
-    flex-direction: row;
-  }
-  .help-sidebar .toc-list li {
-    flex: 0 0 auto;
-  }
   .help-sidebar .toc-list .toc-section-title {
     display: none;
   }
