@@ -27,15 +27,13 @@ module.exports = function createManifestHandler(getConfig) {
     // Each profile is a DISTINCT Stremio addon: Stremio dedupes by manifest id, so a
     // profile needs its own id + a distinguishable name. Default (no profile) is
     // byte-identical to before.
-    const baseId = isNative ? 'com.usenet.streamer.native' : 'com.usenet.streamer';
+    const baseId = isNative ? 'com.usenet.streamer.native' : 'com.streamnet.nzb';
     const manifestId = profileSlug ? `${baseId}.p.${profileSlug}` : baseId;
     const displayName = profileSlug
       ? (profileNameOverridden ? ADDON_NAME : `${ADDON_NAME || DEFAULT_ADDON_NAME} (${profileDisplayName})`)
       : ADDON_NAME;
 
-    const description = isNative
-      ? 'Native Usenet streaming for Stremio v5 (Windows) - NZB sources via direct Newznab indexers'
-      : 'Usenet-powered instant streams for Stremio via Prowlarr/NZBHydra and NZBDav';
+    const description = 'StreamNet Usenet NZBStreamer via NZBDavEx';
 
     const catalogs = [];
     const resources = ['stream'];

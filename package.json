@@ -1,6 +1,6 @@
 {
   "name": "nzbstreamer",
-  "version": "1.8.4",
+  "version": "1.8.5",
   "description": "Usenet-powered web streaming bridge for Streamnet",
   "main": "index.js",
   "scripts": {

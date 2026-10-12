@@ -301,7 +301,7 @@ setInterval(() => {
 
 const app = express();
 let currentPort = Number(process.env.PORT || 7000);
-const ADDON_VERSION = "1.8.4";
+const ADDON_VERSION = "1.8.5";
 const DEFAULT_ADDON_NAME = "NZBStreamer";
 let serverInstance = null;
 const SERVER_HOST = process.env.SERVER_HOST || "0.0.0.0";
@@ -995,6 +995,56 @@ adminApiRouter.post("/test-connections", async (req, res) => {
   } catch (error) {
     const reason = error?.message || "Connection test failed";
     res.json({ status: "error", message: reason });
+  }
+});
+
+adminApiRouter.post("/user-agents/update", async (req, res) => {
+  try {
+    const headers = {
+      Accept: "application/vnd.github+json",
+      "User-Agent": "NZBStreamer",
+      "X-GitHub-Api-Version": "2022-11-28",
+    };
+    const [prowlarrResponse, sabnzbdResponse] = await Promise.all([
+      axios.get(
+        "https://api.github.com/repos/Prowlarr/Prowlarr/releases/latest",
+        { headers, timeout: 10000 },
+      ),
+      axios.get(
+        "https://api.github.com/repos/sabnzbd/sabnzbd/releases/latest",
+        { headers, timeout: 10000 },
+      ),
+    ]);
+
+    const prowlarrTag = prowlarrResponse.data?.tag_name;
+    const sabnzbdTag = sabnzbdResponse.data?.tag_name;
+    const prowlarrVersion = prowlarrTag?.replace(/^v/, "");
+    const sabnzbdVersion = sabnzbdTag?.replace(/^v/, "");
+    if (
+      prowlarrResponse.data?.prerelease === true ||
+      !/^\d+\.\d+\.\d+\.\d+$/.test(prowlarrVersion || "") ||
+      sabnzbdResponse.data?.prerelease === true ||
+      !/^\d+\.\d+\.\d+$/.test(sabnzbdVersion || "")
+    ) {
+      throw new Error("GitHub returned an unexpected stable release version.");
+    }
+
+    const searchUserAgent = `Prowlarr/${prowlarrVersion} (ubuntu 24.04)`;
+    const downloadUserAgent = `SABnzbd/${sabnzbdVersion}`;
+    runtimeEnv.updateRuntimeEnv({
+      NZB_DEFAULT_SEARCH_USER_AGENT: searchUserAgent,
+      NZB_DEFAULT_DOWNLOAD_USER_AGENT: downloadUserAgent,
+    });
+    runtimeEnv.applyRuntimeEnv();
+    res.json({ searchUserAgent, downloadUserAgent });
+  } catch (error) {
+    console.error(
+      "[ADMIN] Failed to update default User-Agents",
+      error?.message || error,
+    );
+    res.status(502).json({
+      error: `Could not update default User-Agents: ${error?.message || "GitHub request failed"}`,
+    });
   }
 });
 

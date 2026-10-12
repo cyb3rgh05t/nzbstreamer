@@ -30,6 +30,12 @@
   const stremioAppButton = document.getElementById("installStremioApp");
   const healthPaidWarning = document.getElementById("healthPaidWarning");
   const saveButton = configForm.querySelector('button[type="submit"]');
+  const updateDefaultUserAgentsButton = document.getElementById(
+    "updateDefaultUserAgents",
+  );
+  const defaultUserAgentsStatus = document.getElementById(
+    "defaultUserAgentsStatus",
+  );
   let hasUnsavedChanges = false;
   function setUnsavedChanges(isDirty) {
     hasUnsavedChanges = isDirty;
@@ -1197,11 +1203,11 @@
         <summary>Advanced settings</summary>
         <div class="field-grid">
           <label>Search User-Agent
-            <input type="text" data-field="SEARCH_UA" placeholder="Prowlarr/2.4.0.5397 (ubuntu 22.04)" />
+            <input type="text" data-field="SEARCH_UA" placeholder="Prowlarr/2.6.5.5623 (ubuntu 24.04)" />
             <span class="field-hint">User-Agent sent on Newznab API search calls. Leave blank to use the default.</span>
           </label>
           <label>Download User-Agent
-            <input type="text" data-field="DOWNLOAD_UA" placeholder="SABnzbd/5.0.3" />
+            <input type="text" data-field="DOWNLOAD_UA" placeholder="SABnzbd/5.1.3" />
             <span class="field-hint">User-Agent sent when downloading the NZB file (used by health checks and NZBDav uploads). Leave blank to use the default.</span>
           </label>
           <label>Indexer Proxy (Optional)
@@ -1518,6 +1524,30 @@
     } finally {
       button.disabled = false;
       button.textContent = originalText;
+    }
+  }
+
+  async function updateDefaultUserAgents() {
+    if (!updateDefaultUserAgentsButton || !defaultUserAgentsStatus) return;
+    const originalText = updateDefaultUserAgentsButton.textContent;
+    defaultUserAgentsStatus.textContent = "";
+    defaultUserAgentsStatus.classList.remove("success", "error");
+    updateDefaultUserAgentsButton.disabled = true;
+    updateDefaultUserAgentsButton.textContent = "Checking releases...";
+    try {
+      const result = await apiRequest("/admin/api/user-agents/update", {
+        method: "POST",
+      });
+      defaultUserAgentsStatus.textContent =
+        `Updated: ${result.searchUserAgent} · ${result.downloadUserAgent}`;
+      defaultUserAgentsStatus.classList.add("success");
+    } catch (error) {
+      defaultUserAgentsStatus.textContent =
+        error.message || "Could not update default User-Agents.";
+      defaultUserAgentsStatus.classList.add("error");
+    } finally {
+      updateDefaultUserAgentsButton.disabled = false;
+      updateDefaultUserAgentsButton.textContent = originalText;
     }
   }
 
@@ -2976,6 +3006,10 @@
   testButtons.forEach((button) => {
     button.addEventListener("click", () => runConnectionTest(button));
   });
+  updateDefaultUserAgentsButton?.addEventListener(
+    "click",
+    updateDefaultUserAgents,
+  );
 
   if (copyManifestButton) {
     copyManifestButton.addEventListener("click", copyManifestUrl);

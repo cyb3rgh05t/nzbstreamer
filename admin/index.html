@@ -165,6 +165,11 @@
         <section class="group" id="newznabGroup">
           <h3>Direct Newznab Indexers</h3>
           <p class="hint">Add one or more direct Newznab endpoints. Enable them to search alongside your manager (or run manager-free), test each row, and reorder to control priority.</p>
+          <p class="hint">Update the built-in Prowlarr and SABnzbd User-Agent defaults from their latest stable GitHub releases. Custom per-indexer User-Agents are not changed.</p>
+          <div class="inline-actions">
+            <button type="button" class="secondary" id="updateDefaultUserAgents">Update default User-Agents</button>
+            <span class="status-message" id="defaultUserAgentsStatus" role="status" aria-live="polite"></span>
+          </div>
           <div class="newznab-preset-bar">
             <label>Preset
               <select id="newznabPreset"></select>

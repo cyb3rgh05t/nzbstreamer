@@ -2,21 +2,21 @@
 // step with the latest Prowlarr (search) / SABnzbd (download) releases.
 //   - Prowlarr (Servarr) sends "{App}/{fullVersion} ({osName} {osVersion})".
 //   - SABnzbd sends "SABnzbd/{version}" (no OS suffix).
-const DEFAULT_SEARCH_UA = 'Prowlarr/2.5.2.5491 (ubuntu 24.04)';
-const DEFAULT_DOWNLOAD_UA = 'SABnzbd/5.1.0';
+const DEFAULT_SEARCH_UA = 'Prowlarr/2.6.5.5623 (ubuntu 24.04)';
+const DEFAULT_DOWNLOAD_UA = 'SABnzbd/5.1.3';
 
 function getDefaultSearchUserAgent() {
-  return DEFAULT_SEARCH_UA;
+  return process.env.NZB_DEFAULT_SEARCH_USER_AGENT || DEFAULT_SEARCH_UA;
 }
 
 function getDefaultDownloadUserAgent() {
-  return DEFAULT_DOWNLOAD_UA;
+  return process.env.NZB_DEFAULT_DOWNLOAD_USER_AGENT || DEFAULT_DOWNLOAD_UA;
 }
 
 // Backward-compatible alias — returns the download UA. Existing callers that
 // download NZB payloads continue to work unchanged.
 function getRandomUserAgent() {
-  return DEFAULT_DOWNLOAD_UA;
+  return getDefaultDownloadUserAgent();
 }
 
 module.exports = {
