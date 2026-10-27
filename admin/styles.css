@@ -3095,24 +3095,26 @@ h3 {
 @media (min-width: 801px) {
   .has-config .container > .auth-card,
   .has-config .container > #configSection {
-    margin: 0 36px 60px;
+    margin: 0 0 60px;
   }
   .has-config .container:has(> .app-sidebar) > header,
   .has-config .container:has(> .app-sidebar) > .auth-card,
   .has-config .container:has(> .app-sidebar) > #configSection {
-    width: auto;
+    width: min(1500px, calc(100% - 72px));
     max-width: 1500px;
-    justify-self: stretch;
+    justify-self: center;
   }
   .has-config .container:has(> .app-sidebar) > header {
     margin: 0;
     max-width: none;
+    width: auto;
+    justify-self: stretch;
   }
   .container:has(> .app-sidebar) > .help-content {
-    width: auto;
+    width: min(1500px, calc(100% - 72px));
     max-width: 1500px;
-    margin: 0 36px 60px;
-    justify-self: stretch;
+    margin: 0 0 60px;
+    justify-self: center;
   }
 }
 
