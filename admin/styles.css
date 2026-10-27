@@ -1895,9 +1895,6 @@ header h1 {
 .container:has(> .app-sidebar) > header {
   grid-column: 2;
   grid-row: 1;
-  position: sticky;
-  top: 0;
-  z-index: 10;
   min-width: 0;
   height: 52px;
   padding: 0 1.35rem;
@@ -3092,6 +3089,10 @@ h3 {
   font-weight: 600;
   letter-spacing: 0;
 }
+.sidebar-footer .version-badge {
+  width: fit-content;
+  margin: 12px 12px 0;
+}
 @media (min-width: 801px) {
   .has-config .container > .auth-card,
   .has-config .container > #configSection {
@@ -3103,12 +3104,6 @@ h3 {
     width: min(1500px, calc(100% - 72px));
     max-width: 1500px;
     justify-self: center;
-  }
-  .has-config .container:has(> .app-sidebar) > header {
-    margin: 0;
-    max-width: none;
-    width: auto;
-    justify-self: stretch;
   }
   .container:has(> .app-sidebar) > .help-content {
     width: min(1500px, calc(100% - 72px));
@@ -3154,13 +3149,54 @@ h3 {
   background: var(--surface-raised);
   border: 1px solid var(--border-soft);
   border-left: 3px solid var(--accent);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   box-shadow: none;
   transform: none;
 }
 .newznab-row:hover {
   border-color: var(--line-strong);
   border-left-color: var(--accent);
+}
+.newznab-row .row-title > .checkbox {
+  align-items: center;
+  gap: 0.55rem !important;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+.newznab-row .row-title > .checkbox input[type="checkbox"] {
+  appearance: none;
+  width: 36px;
+  height: 20px;
+  min-width: 36px;
+  min-height: 20px;
+  margin: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background-color: var(--surface-hover);
+  background-image: radial-gradient(circle, var(--text-primary) 0 6px, transparent 6.5px);
+  background-repeat: no-repeat;
+  background-position: 1px center;
+  background-size: 16px 16px;
+  accent-color: auto;
+  transition: background-color 150ms ease, background-position 150ms ease, border-color 150ms ease;
+}
+.newznab-row .row-title > .checkbox input[type="checkbox"]:checked {
+  border-color: var(--accent);
+  background-color: var(--accent);
+  background-image: radial-gradient(circle, var(--bg-body) 0 6px, transparent 6.5px);
+  background-position: right 1px center;
+}
+.newznab-row .row-title > .checkbox input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.newznab-row .row-title > .checkbox span {
+  color: inherit;
 }
 .profile-switcher {
   background: var(--bg-card);
