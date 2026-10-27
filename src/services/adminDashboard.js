@@ -1,11 +1,11 @@
 const cache = require("../cache");
 const embeddedNzbdav = require("./embeddedNzbdav");
 
-async function requestBackend(path, validate) {
+async function requestBackend(connection, path, validate) {
   try {
-    const url = new URL(path, `${process.env.NZBDAV_URL.replace(/\/+$/, "")}/`);
+    const url = new URL(path, `${connection.url.replace(/\/+$/, "")}/`);
     const response = await fetch(url, {
-      headers: { "x-api-key": process.env.NZBDAV_API_KEY },
+      headers: { "x-api-key": connection.apiKey },
       signal: AbortSignal.timeout(8000),
       redirect: "error",
     });
@@ -53,8 +53,9 @@ function isProviderList(data) {
     typeof item.overLimit === "boolean");
 }
 
-async function getHistoryPage(page) {
+async function getHistoryPage(connection, page) {
   const load = (number) => requestBackend(
+    connection,
     `api?mode=history&output=json&start=${(number - 1) * 10}&limit=10`,
     (data) => isSlotList(data, "history"),
   );
@@ -74,6 +75,7 @@ async function getDashboard({ historyPage = 1 } = {}) {
     throw new RangeError("historyPage must be a positive page number within the supported range.");
   }
   const stats = cache.getAllCacheStats();
+  const connection = embeddedNzbdav.getConnectionConfig();
   const { cacheDir, ...disk } = stats.disk;
   const result = {
     updatedAt: new Date().toISOString(),
@@ -88,7 +90,7 @@ async function getDashboard({ historyPage = 1 } = {}) {
     providers: null,
     errors: [],
   };
-  if (!process.env.NZBDAV_URL || !process.env.NZBDAV_API_KEY) {
+  if (!connection.url || !connection.apiKey) {
     result.errors.push({ source: "backend", message: "NZBDav is not configured." });
     return result;
   }
@@ -105,7 +107,9 @@ async function getDashboard({ historyPage = 1 } = {}) {
   }
   const responses = await Promise.allSettled(
     requests.map(([source, path, validate]) =>
-      source === "history" ? getHistoryPage(historyPage) : requestBackend(path, validate)),
+      source === "history"
+        ? getHistoryPage(connection, historyPage)
+        : requestBackend(connection, path, validate)),
   );
   responses.forEach((response, index) => {
     const source = requests[index][0];

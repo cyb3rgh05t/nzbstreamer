@@ -112,12 +112,20 @@
         </section>
       </section>
       <div class="profile-switcher" id="profileSwitcherBar">
+        <div class="profile-switcher-heading">
+          <span class="profile-switcher-icon"><i data-lucide="users-round" aria-hidden="true"></i></span>
+          <div><h2>Profiles</h2><p class="hint">One shared setup. Individual streaming preferences.</p></div>
+        </div>
         <div class="profile-tabs" id="profileTabs"></div>
         <div class="profile-edit-row hidden" id="profileEditRow">
           <input id="profileNameInput" type="text" placeholder="Profile name" maxlength="64" />
           <button type="button" id="deleteProfileBtn" class="secondary">Delete</button>
         </div>
-        <p class="hint" id="profileHint">Profiles share all credentials, indexers, NZBDav and NNTP settings. They only override sorting/filtering, naming, stream protection, streaming mode, catalog, and addon name. Each profile installs as its own Stremio addon at <code>/&lt;token&gt;/&lt;profile&gt;/manifest.json</code>.</p>
+        <div class="profile-guidance" id="profileHint">
+          <p class="hint"><strong>Shared setup</strong> Credentials, indexers, NZBDav and NNTP settings.</p>
+          <p class="hint"><strong>Per profile</strong> Sorting/filtering, naming, stream protection, streaming mode, catalog and addon name.</p>
+          <p class="hint profile-manifest-hint"><strong>Stremio install path</strong><code>/&lt;token&gt;/&lt;profile&gt;/manifest.json</code></p>
+        </div>
         <p class="hint hidden" id="profileMultiInstallWarning">⚠️ <strong>Install only one profile per Stremio account.</strong> Stremio queries every installed addon on each title, so adding two profiles to the same account runs this addon twice per request — duplicating searches and triage, and slowing results. Use different profiles on different Stremio accounts or devices.</p>
         <p class="hint hidden" id="profileInstallHint"></p>
       </div>
@@ -1160,14 +1168,18 @@ health'></textarea>
       </section>
 
       <div class="manifest-row">
+        <div class="manifest-heading">
+          <span class="manifest-icon"><i data-lucide="puzzle" aria-hidden="true"></i></span>
+          <div><h2>Install your addon</h2><p class="hint">Choose Stremio Web, open the app, or copy the manifest link.</p></div>
+        </div>
         <div class="manifest-info">
-          <strong>Manifest URL</strong>
+          <strong><i data-lucide="link" aria-hidden="true"></i>Manifest connection</strong>
           <p id="manifestDescription" class="hint">Use the buttons to copy or install the addon once HTTPS and your token are set.</p>
         </div>
         <div class="manifest-actions">
-          <button type="button" class="secondary" id="installStremioWeb" disabled>Install via Stremio Web</button>
-          <button type="button" class="secondary" id="installStremioApp" disabled>Open in Stremio App</button>
-          <button type="button" class="secondary" id="copyManifest" disabled>Copy Manifest URL</button>
+          <button type="button" class="primary" id="installStremioWeb" disabled><i data-lucide="globe" aria-hidden="true"></i>Install via Stremio Web</button>
+          <button type="button" class="secondary" id="installStremioApp" disabled><i data-lucide="external-link" aria-hidden="true"></i>Open in Stremio App</button>
+          <button type="button" class="secondary" id="copyManifest" disabled><i data-lucide="copy" aria-hidden="true"></i>Copy Manifest URL</button>
           <span id="copyManifestStatus" class="copy-status" aria-live="polite"></span>
         </div>
       </div>

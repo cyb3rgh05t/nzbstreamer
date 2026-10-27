@@ -542,6 +542,7 @@ input[type="checkbox"] {
 }
 
 .checkbox {
+  display: flex;
   flex-direction: row !important;
   align-items: center;
   gap: 0.55rem !important;
@@ -566,6 +567,8 @@ input[type="checkbox"] {
 .checkbox span {
   font-weight: 600;
   color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .inline-actions,
@@ -3205,6 +3208,89 @@ h3 {
   background: transparent;
   border-style: dashed;
 }
+.profile-switcher {
+  border-top: 2px solid var(--accent);
+  background-image: linear-gradient(120deg, var(--accent-soft), transparent 55%);
+}
+.profile-switcher-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+.profile-switcher-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.profile-switcher-icon svg {
+  width: 22px;
+  height: 22px;
+}
+.profile-switcher .profile-switcher-heading h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+.profile-switcher .profile-switcher-heading h2::before {
+  display: none;
+}
+.profile-switcher-heading .hint {
+  margin: 0.25rem 0 0;
+}
+.profile-switcher .profile-tab {
+  min-height: 36px;
+  padding: 0.5rem 1rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  border-radius: 999px;
+  background: var(--bg-input);
+  border-color: var(--border-strong);
+}
+.profile-switcher .profile-tab.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.profile-switcher .profile-tab:hover {
+  border-color: var(--accent);
+  background: var(--surface-hover);
+  color: var(--accent);
+  transform: none;
+}
+.profile-switcher .profile-tab-add {
+  border-style: dashed;
+  background: transparent;
+  color: var(--accent);
+}
+.profile-guidance {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-soft);
+}
+.profile-guidance .hint {
+  min-width: 0;
+  margin: 0;
+  line-height: 1.6;
+}
+.profile-guidance strong {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+.profile-manifest-hint code {
+  display: inline-block;
+  max-width: 100%;
+  margin-top: 0.25rem;
+}
 
 .field-row label,
 .field-grid label,
@@ -3645,4 +3731,69 @@ input[type="checkbox"]:disabled {
   #refreshDashboard[aria-busy="true"] svg {
     animation: none;
   }
+}
+
+#configSection.admin-view-manifest .manifest-row {
+  gap: 1.25rem;
+  border-top: 2px solid var(--accent);
+  background-image: linear-gradient(120deg, var(--accent-soft), transparent 55%);
+}
+.manifest-heading {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+.manifest-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.manifest-heading h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.manifest-heading h2::before {
+  display: none;
+}
+.manifest-heading .hint {
+  margin: 0.35rem 0 0;
+}
+.manifest-row .manifest-info {
+  min-width: 0;
+  height: 100%;
+  font-family: inherit;
+  border-color: var(--border-soft);
+  border-left: 3px solid var(--accent);
+  background: var(--bg-input);
+}
+.manifest-info > strong {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.manifest-info svg,
+.manifest-actions svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.manifest-actions .secondary svg {
+  color: var(--accent);
+}
+.manifest-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.manifest-actions .copy-status:empty {
+  display: none;
 }

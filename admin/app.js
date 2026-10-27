@@ -21,7 +21,7 @@
   const settingsSections = Array.from(
     configForm.querySelectorAll(":scope > section.group"),
   );
-  let activeSettingsView = settingsSections[0];
+  let activeSettingsView = "dashboard";
   let sessionMonitorTimer = null;
   let sessionExpiredReturnToConfig = false;
   let sessionExpiredViewTitle = "";

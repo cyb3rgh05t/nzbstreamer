@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const embeddedNzbdav = require("./embeddedNzbdav");
 const cache = require("../cache");
 const { getDashboard } = require("./adminDashboard");
+const getBackendConnection = embeddedNzbdav.getConnectionConfig;
 
 function setup(t, internal = true) {
   const saved = { url: process.env.NZBDAV_URL, key: process.env.NZBDAV_API_KEY };
@@ -17,6 +18,10 @@ function setup(t, internal = true) {
     }
   });
   t.mock.method(embeddedNzbdav, "isEnabled", () => internal);
+  t.mock.method(embeddedNzbdav, "getConnectionConfig", () => ({
+    url: process.env.NZBDAV_URL,
+    apiKey: process.env.NZBDAV_API_KEY,
+  }));
   t.mock.method(cache, "getAllCacheStats", () => ({
     stream: { entries: 2, bytes: 100 },
     nzbdav: { entries: 1, byStatus: { ready: 1, pending: 0 } },
@@ -224,4 +229,36 @@ test("invalid history pages are rejected before any backend request", async (t) 
     await assert.rejects(getDashboard({ historyPage }), RangeError);
   }
   assert.equal(global.fetch.mock.calls.length, 0);
+});
+
+test("internal dashboard keeps backend credentials when runtime environment is overwritten", async (t) => {
+  setup(t);
+  const keys = [
+    "NZBDAV_BACKEND", "NZBDAV_INTERNAL_PORT", "NZBDAV_WEBDAV_URL",
+    "NZBDAV_WEBDAV_USER", "NZBDAV_WEBDAV_PASS", "FRONTEND_BACKEND_API_KEY",
+  ];
+  const saved = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  t.after(() => {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
+  process.env.NZBDAV_BACKEND = "internal";
+  process.env.NZBDAV_INTERNAL_PORT = "7071";
+  embeddedNzbdav.configure();
+  const connection = getBackendConnection();
+  t.mock.method(embeddedNzbdav, "getConnectionConfig", getBackendConnection);
+  process.env.NZBDAV_URL = "http://stale-external-backend.invalid";
+  process.env.NZBDAV_API_KEY = "stale-saved-key";
+  t.mock.method(global, "fetch", async (url, options) => {
+    assert.equal(url.origin, "http://127.0.0.1:7071");
+    assert.equal(options.headers["x-api-key"], connection.apiKey);
+    assert.notEqual(options.headers["x-api-key"], "stale-saved-key");
+    return Response.json(fixture(url));
+  });
+  const result = await getDashboard();
+  assert.equal(global.fetch.mock.calls.length, 4);
+  assert.deepEqual(result.errors, []);
+  assert.equal(JSON.stringify(result).includes(connection.apiKey), false);
 });

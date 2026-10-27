@@ -410,6 +410,12 @@ async function reconfigure() {
 module.exports = {
   configure,
   isEnabled: () => internalEnabled,
+  getConnectionConfig: () => internalEnabled
+    ? { url: serviceUrl, apiKey }
+    : {
+      url: (process.env.NZBDAV_URL || "").trim(),
+      apiKey: (process.env.NZBDAV_API_KEY || "").trim(),
+    },
   start,
   stop,
   reconfigure,
