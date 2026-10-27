@@ -525,6 +525,17 @@ adminApiRouter.get("/config", (req, res) => {
   });
 });
 
+adminApiRouter.get("/dashboard", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    const { getDashboard } = require("./src/services/adminDashboard");
+    res.json(await getDashboard());
+  } catch (error) {
+    console.error("[ADMIN DASHBOARD] Could not load dashboard", error.message);
+    res.status(500).json({ error: "Could not load dashboard data." });
+  }
+});
+
 adminApiRouter.post("/config", async (req, res) => {
   const payload = req.body || {};
   const incoming = payload.values;

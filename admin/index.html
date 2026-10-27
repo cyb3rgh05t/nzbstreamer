@@ -79,6 +79,28 @@
     </section>
 
     <section class="card hidden" id="configSection">
+      <section class="group hidden" id="dashboardPanel" aria-labelledby="dashboardTitle">
+        <div class="dashboard-heading">
+          <div>
+            <h3 id="dashboardTitle">Dashboard</h3>
+            <p class="hint">NZBDav activity and NZBStreamer caches. Read-only; refreshes every 15 seconds while this page is visible.</p>
+          </div>
+          <button type="button" class="secondary" id="refreshDashboard">Refresh</button>
+        </div>
+        <p id="dashboardStatus" class="hint" role="status"></p>
+        <div id="dashboardErrors" role="alert"></div>
+        <div id="dashboardTiles" class="dashboard-tiles"></div>
+        <div class="dashboard-columns">
+          <section class="dashboard-block"><h3>Download queue</h3><div id="dashboardQueue"></div></section>
+          <section class="dashboard-block"><h3>Recent history</h3><div id="dashboardHistory"></div></section>
+        </div>
+        <section class="dashboard-block"><h3>Provider usage</h3><div id="dashboardProviders"></div></section>
+        <section class="dashboard-block">
+          <h3>NZBStreamer caches</h3>
+          <p class="hint">Cached NZB payloads and stream results, not downloaded video storage.</p>
+          <div id="dashboardCaches" class="dashboard-tiles"></div>
+        </section>
+      </section>
       <div class="profile-switcher" id="profileSwitcherBar">
         <div class="profile-tabs" id="profileTabs"></div>
         <div class="profile-edit-row hidden" id="profileEditRow">

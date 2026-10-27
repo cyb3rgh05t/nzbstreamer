@@ -45,6 +45,7 @@
 
 ### 🆕 Recent Enhancements
 
+- **Activity dashboard** — the admin sidebar's Dashboard shows the NZBDav queue and recent history, plus NZBStreamer disk/stream cache statistics. Built-in NZBDavEx also supplies active reads, virtual catalogue size and provider byte usage. Data refreshes every 15 seconds while the dashboard tab is visible; failures are shown explicitly. This view is read-only and requires an admin session.
 - **Stream Protection modes** — unified protection selector in the dashboard: `none`, `auto-advance`, `health-check`, `health-check-auto-advance`, `smart-play-only`, and `smart-play`.
 - **Smart Play (background triage)** — background health checks add a dedicated Smart Play stream that can auto-pick healthy candidates while checks continue.
 - **Custom sorting chain** — `NZB_SORT_ORDER` drives result ordering with any combination of: `language`, `release_group`, `size`, `resolution`, `quality`, `encode`, `visual_tag`, `audio_tag`, `keyword`, `date`, `files`. Default chain: `quality,size,files`.

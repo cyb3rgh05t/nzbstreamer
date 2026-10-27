@@ -8,6 +8,11 @@
   const configForm = document.getElementById("configForm");
   const settingsNav = document.getElementById("settingsNav");
   const currentViewTitle = document.getElementById("currentViewTitle");
+  const dashboardPanel = document.getElementById("dashboardPanel");
+  const dashboardStatus = document.getElementById("dashboardStatus");
+  const refreshDashboardButton = document.getElementById("refreshDashboard");
+  let dashboardTimer = null;
+  let dashboardLoading = false;
   const settingsSections = Array.from(
     configForm.querySelectorAll(":scope > section.group"),
   );
@@ -44,6 +49,7 @@
 
   function showSignInForExpiredSession() {
     if (!document.body.classList.contains("has-config")) return;
+    stopDashboardPolling();
     sessionExpiredReturnToConfig = true;
     sessionExpiredViewTitle = currentViewTitle.textContent || "";
     configSection.classList.add("hidden");
@@ -1699,10 +1705,143 @@
     );
   }
 
+  function stopDashboardPolling() {
+    if (dashboardTimer) clearInterval(dashboardTimer);
+    dashboardTimer = null;
+  }
+
+  function dashboardBytes(value) {
+    if (!Number.isFinite(value)) return "Unavailable";
+    const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit += 1;
+    }
+    return `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${units[unit]}`;
+  }
+
+  function dashboardTile(label, value, detail) {
+    const tile = document.createElement("div");
+    tile.className = "dashboard-tile";
+    const title = document.createElement("span");
+    title.textContent = label;
+    const amount = document.createElement("strong");
+    amount.textContent = value;
+    tile.append(title, amount);
+    if (detail) {
+      const hint = document.createElement("p");
+      hint.className = "hint";
+      hint.textContent = detail;
+      tile.appendChild(hint);
+    }
+    return tile;
+  }
+
+  function renderDashboardList(id, items, queue = false) {
+    const container = document.getElementById(id);
+    container.replaceChildren();
+    if (items === null || items.length === 0) {
+      const message = document.createElement("p");
+      message.className = "hint";
+      message.textContent = items === null ? "Data unavailable. See errors above." : "No items.";
+      container.appendChild(message);
+      return;
+    }
+    items.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "dashboard-item";
+      const title = document.createElement("strong");
+      title.textContent = item.name;
+      const detail = document.createElement("p");
+      detail.className = "hint";
+      detail.textContent = queue
+        ? `${item.status} | ${item.category || "Uncategorized"} | ${item.percentage}%`
+        : `${item.status} | ${item.category || "Uncategorized"} | ${dashboardBytes(item.bytes)}`;
+      row.append(title, detail);
+      if (queue) {
+        const progress = document.createElement("progress");
+        progress.max = 100;
+        progress.value = item.percentage;
+        progress.setAttribute("aria-label", `${item.name}: ${item.percentage}%`);
+        row.appendChild(progress);
+      }
+      container.appendChild(row);
+    });
+  }
+
+  async function loadDashboard() {
+    if (dashboardLoading || activeSettingsView !== "dashboard" ||
+        !document.body.classList.contains("has-config")) return;
+    dashboardLoading = true;
+    refreshDashboardButton.disabled = true;
+    dashboardStatus.textContent = "Loading dashboard...";
+    dashboardStatus.classList.remove("error");
+    try {
+      const data = await apiRequest("/admin/api/dashboard", { cache: "no-store" });
+      if (activeSettingsView !== "dashboard") return;
+      const errors = document.getElementById("dashboardErrors");
+      errors.replaceChildren();
+      data.errors.forEach((error) => {
+        const message = document.createElement("p");
+        message.className = "error";
+        message.textContent = `${error.source}: ${error.message}`;
+        errors.appendChild(message);
+      });
+      document.getElementById("dashboardTiles").replaceChildren(
+        dashboardTile("Backend", data.backend.mode === "internal" ? "Built-in NZBDavEx" : "External NZBDav",
+          data.backend.reachable ? "Responding" : "Unavailable"),
+        dashboardTile("Queued downloads", data.queue?.total ?? "Unavailable"),
+        dashboardTile("History items", data.history?.total ?? "Unavailable"),
+        dashboardTile("Active reads", data.overview?.activeReads ?? "Unavailable"),
+        dashboardTile("Data served / minute", dashboardBytes(data.overview?.bytesServedPerMinute)),
+        dashboardTile("Catalogue files", data.overview?.fileCount ?? "Unavailable",
+          data.overview ? `${dashboardBytes(data.overview.totalBytes)} virtual file size (not disk usage)` : null),
+      );
+      renderDashboardList("dashboardQueue", data.queue?.items ?? null, true);
+      renderDashboardList("dashboardHistory", data.history?.items ?? null);
+      const providers = document.getElementById("dashboardProviders");
+      providers.replaceChildren();
+      if (data.providers?.length) {
+        data.providers.forEach((provider) => {
+          const row = dashboardTile(provider.name, dashboardBytes(provider.bytesUsed),
+            provider.byteLimit > 0 ? `Limit: ${dashboardBytes(provider.byteLimit)}` : "No byte limit");
+          if (provider.overLimit) row.classList.add("error");
+          providers.appendChild(row);
+        });
+      } else {
+        const message = document.createElement("p");
+        message.className = "hint";
+        message.textContent = data.backend.mode === "external"
+          ? "Provider and overview metrics are available for the built-in NZBDavEx backend only."
+          : data.providers === null ? "Provider data unavailable. See errors above." : "No providers configured.";
+        providers.appendChild(message);
+      }
+      document.getElementById("dashboardCaches").replaceChildren(
+        dashboardTile("NZB payload disk cache", `${data.caches.disk.entries} entries`,
+          `${dashboardBytes(data.caches.disk.totalBytes)} / ${dashboardBytes(data.caches.disk.maxBytes)}`),
+        dashboardTile("Stream response cache", `${data.caches.stream.entries} entries`,
+          dashboardBytes(data.caches.stream.bytes)),
+        dashboardTile("NZBDav stream cache", `${data.caches.nzbdav.entries} entries`,
+          `${data.caches.nzbdav.byStatus.ready} ready | ${data.caches.nzbdav.byStatus.pending} pending`),
+      );
+      dashboardStatus.textContent = `Updated ${new Date(data.updatedAt).toLocaleTimeString()}. Showing up to 20 queue and history items.`;
+    } catch (error) {
+      dashboardStatus.textContent = `Dashboard refresh failed: ${error.message}. Previously displayed values may be out of date.`;
+      dashboardStatus.classList.add("error");
+    } finally {
+      dashboardLoading = false;
+      refreshDashboardButton.disabled = false;
+    }
+  }
+
+  refreshDashboardButton.addEventListener("click", loadDashboard);
+
   function syncSettingsNavigation() {
     const available = settingsSections.filter(isSettingsSectionAvailable);
     if (
       activeSettingsView !== "manifest" &&
+      activeSettingsView !== "dashboard" &&
       !available.includes(activeSettingsView)
     ) {
       activeSettingsView = available[0] || "manifest";
@@ -1722,12 +1861,27 @@
       else button.removeAttribute("aria-current");
     });
     const manifestActive = activeSettingsView === "manifest";
+    const dashboardActive = activeSettingsView === "dashboard";
+    configSection.classList.toggle("admin-view-dashboard", dashboardActive);
+    dashboardPanel.classList.toggle("hidden", !dashboardActive);
+    const dashboardButton = settingsNav.querySelector('[data-view="dashboard"]');
+    dashboardButton.classList.toggle("active", dashboardActive);
+    if (dashboardActive) dashboardButton.setAttribute("aria-current", "page");
+    else dashboardButton.removeAttribute("aria-current");
+    if (dashboardActive && !dashboardTimer && document.body.classList.contains("has-config")) {
+      loadDashboard();
+      dashboardTimer = setInterval(() => {
+        if (!document.hidden) loadDashboard();
+      }, 15000);
+    } else if (!dashboardActive) {
+      stopDashboardPolling();
+    }
     configSection.classList.toggle("admin-view-manifest", manifestActive);
     const manifestButton = settingsNav.querySelector('[data-view="manifest"]');
     manifestButton.classList.toggle("active", manifestActive);
     if (manifestActive) manifestButton.setAttribute("aria-current", "page");
     else manifestButton.removeAttribute("aria-current");
-    currentViewTitle.textContent = manifestActive
+    currentViewTitle.textContent = dashboardActive ? "Dashboard" : manifestActive
       ? "Install Addon"
       : activeSettingsView
           .querySelector(":scope > h3")
@@ -1787,6 +1941,7 @@
           sessionMonitorTimer = null;
         }
         sessionExpiredReturnToConfig = false;
+        stopDashboardPolling();
         try {
           await apiRequest("/admin/api/auth/logout", { method: "POST" });
         } catch (error) {
@@ -1798,6 +1953,20 @@
         currentViewTitle.textContent = "Sign in";
         usernameInput.focus();
       });
+    const dashboardButton = document.createElement("button");
+    dashboardButton.type = "button";
+    dashboardButton.className = "sidebar-link";
+    dashboardButton.dataset.view = "dashboard";
+    dashboardButton.innerHTML = '<i data-lucide="layout-dashboard" aria-hidden="true"></i>Dashboard';
+    dashboardButton.addEventListener("click", async () => {
+      if (activeSettingsView !== "dashboard" && !(await confirmNavigationWithUnsavedChanges())) return;
+      document.body.classList.remove("mobile-nav-open", "auth-open");
+      mobileNavToggle?.setAttribute("aria-expanded", "false");
+      activeSettingsView = "dashboard";
+      syncSettingsNavigation();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    settingsNav.appendChild(dashboardButton);
     const categories = [
       "Streams",
       "Indexers",
