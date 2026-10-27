@@ -3797,3 +3797,63 @@ input[type="checkbox"]:disabled {
 .manifest-actions .copy-status:empty {
   display: none;
 }
+
+.container > #configSection .group.addon-metadata {
+  border-top: 2px solid var(--accent);
+  background-image: linear-gradient(120deg, var(--accent-soft), transparent 55%);
+}
+.addon-metadata > h3 {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+.addon-metadata > h3 > svg {
+  order: -1;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.addon-metadata-intro {
+  margin: 0 0 1.25rem;
+}
+.addon-metadata .addon-metadata-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.addon-metadata-field {
+  padding: 1.1rem;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+}
+.addon-metadata-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+}
+.addon-metadata-label svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.addon-metadata-token {
+  grid-column: 1 / -1;
+}
+.addon-metadata-field input {
+  width: 100%;
+  min-width: 0;
+}
+.addon-metadata .addon-token-notice {
+  padding: 0.65rem 0.8rem;
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--warning);
+}
+@media (max-width: 720px) {
+  .addon-metadata .addon-metadata-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

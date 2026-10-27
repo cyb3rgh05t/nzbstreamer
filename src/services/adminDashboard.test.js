@@ -169,6 +169,7 @@ test("history pagination requests exactly ten items at the correct offset", asyn
     if (url.searchParams.get("mode") === "history") {
       assert.equal(url.searchParams.get("start"), "10");
       assert.equal(url.searchParams.get("limit"), "10");
+      assert.equal(url.searchParams.get("pageSize"), "10");
       data.history.noofslots = 25;
       data.history.slots = Array.from({ length: 10 }, (_, index) => ({
         ...data.history.slots[0], nzo_id: String(11 + index), name: `Item ${11 + index}`,
@@ -261,4 +262,28 @@ test("internal dashboard keeps backend credentials when runtime environment is o
   assert.equal(global.fetch.mock.calls.length, 4);
   assert.deepEqual(result.errors, []);
   assert.equal(JSON.stringify(result).includes(connection.apiKey), false);
+});
+
+test("history stays limited to ten entries when upstream ignores the SAB limit", async (t) => {
+  setup(t, false);
+  t.mock.method(global, "fetch", async (url) => {
+    const data = fixture(url);
+    if (url.searchParams.get("mode") === "history") {
+      assert.equal(url.searchParams.get("pageSize"), "10");
+      const start = Number(url.searchParams.get("start"));
+      data.history.noofslots = 510;
+      data.history.slots = Array.from({ length: 510 - start }, (_, index) => ({
+        nzo_id: String(start + index + 1), name: `Item ${start + index + 1}`,
+        status: "Completed", category: "TV", bytes: 100,
+      }));
+    }
+    return Response.json(data);
+  });
+  for (const page of [1, 2, 51]) {
+    const result = await getDashboard({ historyPage: page });
+    assert.equal(result.history.items.length, 10);
+    assert.equal(result.history.items[0].name, `Item ${(page - 1) * 10 + 1}`);
+    assert.equal(result.history.page, page);
+    assert.equal(result.history.total, 510);
+  }
 });

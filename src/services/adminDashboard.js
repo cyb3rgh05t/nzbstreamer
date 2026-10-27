@@ -56,7 +56,7 @@ function isProviderList(data) {
 async function getHistoryPage(connection, page) {
   const load = (number) => requestBackend(
     connection,
-    `api?mode=history&output=json&start=${(number - 1) * 10}&limit=10`,
+    `api?mode=history&output=json&start=${(number - 1) * 10}&limit=10&pageSize=10`,
     (data) => isSlotList(data, "history"),
   );
   let data = await load(page);
@@ -135,7 +135,7 @@ async function getDashboard({ historyPage = 1 } = {}) {
         total: data.history.noofslots,
         page: data.page,
         pageSize: 10,
-        items: data.history.slots.map((item) => ({
+        items: data.history.slots.slice(0, 10).map((item) => ({
           id: item.nzo_id,
           name: item.name || item.nzb_name,
           status: item.status,

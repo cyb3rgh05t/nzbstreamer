@@ -1123,19 +1123,22 @@ health'></textarea>
           </div>
         </section>
 
-        <section class="group" data-profile-section="Addon Name">
-          <h3>Addon Metadata</h3>
-          <div class="field-grid">
-            <label>Addon Display Name
+        <section class="group addon-metadata" data-profile-section="Addon Name">
+          <h3>Addon Metadata<i data-lucide="settings-2" aria-hidden="true"></i></h3>
+          <p class="hint addon-metadata-intro">Customize how your addon appears in Stremio and configure its public connection.</p>
+          <div class="field-grid addon-metadata-grid">
+            <label class="addon-metadata-field"><span class="addon-metadata-label"><i data-lucide="tag" aria-hidden="true"></i>Addon Display Name</span>
               <input name="ADDON_NAME" type="text" placeholder="NZBStreamer" />
               <span class="field-hint">Appears in Stremio as the addon title.</span>
             </label>
-            <label>Public Base URL
+            <label class="addon-metadata-field"><span class="addon-metadata-label"><i data-lucide="globe" aria-hidden="true"></i>Public Base URL</span>
               <input name="ADDON_BASE_URL" type="url" placeholder="https://example.com" />
+              <span class="field-hint">Public HTTPS address used for your manifest and stream links.</span>
             </label>
-            <label>Stream Token (required - auto-generated if blank)
+            <label class="addon-metadata-field addon-metadata-token"><span class="addon-metadata-label"><i data-lucide="key-round" aria-hidden="true"></i>Stream Token</span>
               <input name="ADDON_STREAM_TOKEN" type="text" autocomplete="off" />
-              <span class="field-hint">Token embedded in manifest and stream URLs. Since v1.7.6 this is always separate from the admin token and auto-generated on first start. Changing it will update your manifest URL - you may need to reinstall the addon in Stremio.</span>
+              <span class="field-hint">Required; auto-generated if blank. Used in manifest and stream URLs, separate from your admin credentials.</span>
+              <span class="field-hint addon-token-notice">Changing this token changes your manifest URL. You may need to reinstall the addon in Stremio.</span>
             </label>
           </div>
         </section>
