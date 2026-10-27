@@ -543,7 +543,7 @@ input[type="checkbox"] {
 
 .checkbox {
   flex-direction: row !important;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.55rem !important;
   font-size: 0.94rem;
 }
@@ -552,6 +552,11 @@ input[type="checkbox"] {
 .field-grid > label.checkbox {
   grid-column: 1 / -1;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.field-grid > label.checkbox > .field-hint {
+  flex: 1 1 320px;
 }
 
 .checkbox input[type="checkbox"] {
@@ -3278,7 +3283,7 @@ select option {
 .language-checkbox-grid .checkbox,
 .quality-checkbox-grid .checkbox {
   border-color: var(--border-soft);
-  background: var(--bg-input);
+  background: transparent;
 }
 .sort-order-grid,
 .language-checkbox-grid,
@@ -3503,7 +3508,7 @@ input[type="checkbox"]:disabled {
   gap: 1rem;
 }
 .dashboard-columns {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 .dashboard-tile,
 .dashboard-block {
@@ -3534,4 +3539,110 @@ input[type="checkbox"]:disabled {
   width: 100%;
   margin-top: 0.5rem;
   accent-color: var(--accent);
+}
+#dashboardPanel {
+  border-top: 2px solid var(--accent);
+  background-image: linear-gradient(135deg, var(--accent-soft), transparent 35%);
+}
+#dashboardPanel h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+#dashboardPanel h3 svg,
+.dashboard-heading button svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.dashboard-tile {
+  position: relative;
+  overflow: hidden;
+  border-top: 2px solid var(--line-strong);
+  background: linear-gradient(135deg, var(--accent-soft), transparent 85%), var(--bg-input);
+}
+.dashboard-tile::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0 0 0 100%;
+  background: var(--accent-soft);
+  pointer-events: none;
+}
+.dashboard-tile-label {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.dashboard-tile strong {
+  color: var(--accent);
+}
+.dashboard-block {
+  border-left: 3px solid var(--line-strong);
+  background: linear-gradient(90deg, var(--accent-soft), transparent 40%), var(--bg-input);
+}
+.dashboard-block > h3 {
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+.dashboard-item-meta,
+.dashboard-pagination,
+.dashboard-pagination > div {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+.dashboard-status-badge {
+  display: inline-flex;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.dashboard-status-success {
+  color: #8ed6a3;
+  border-color: rgba(142, 214, 163, 0.3);
+  background: rgba(142, 214, 163, 0.08);
+}
+.dashboard-status-failure {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.dashboard-status-active,
+.dashboard-status-queued {
+  color: var(--accent);
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
+}
+.dashboard-pagination {
+  justify-content: space-between;
+  margin-top: 0.8rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-soft);
+}
+.dashboard-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+#refreshDashboard[aria-busy="true"] svg {
+  animation: dashboard-refresh-spin 800ms linear infinite;
+}
+@keyframes dashboard-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #refreshDashboard[aria-busy="true"] svg {
+    animation: none;
+  }
 }

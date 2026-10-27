@@ -156,3 +156,72 @@ test("queue progress stays within 0..100 and backend authentication errors are v
     { source: "history", message: "Backend returned HTTP 401" },
   ]);
 });
+
+test("history pagination requests exactly ten items at the correct offset", async (t) => {
+  setup(t, false);
+  t.mock.method(global, "fetch", async (url) => {
+    const data = fixture(url);
+    if (url.searchParams.get("mode") === "history") {
+      assert.equal(url.searchParams.get("start"), "10");
+      assert.equal(url.searchParams.get("limit"), "10");
+      data.history.noofslots = 25;
+      data.history.slots = Array.from({ length: 10 }, (_, index) => ({
+        ...data.history.slots[0], nzo_id: String(11 + index), name: `Item ${11 + index}`,
+      }));
+    }
+    return Response.json(data);
+  });
+  const result = await getDashboard({ historyPage: 2 });
+  assert.equal(result.history.page, 2);
+  assert.equal(result.history.pageSize, 10);
+  assert.equal(result.history.total, 25);
+  assert.equal(result.history.items.length, 10);
+  assert.equal(result.history.items[0].name, "Item 11");
+  assert.equal(result.history.items[9].name, "Item 20");
+});
+
+test("history page is clamped and refetched when entries disappear", async (t) => {
+  setup(t, false);
+  const offsets = [];
+  t.mock.method(global, "fetch", async (url) => {
+    const data = fixture(url);
+    if (url.searchParams.get("mode") === "history") {
+      const start = Number(url.searchParams.get("start"));
+      offsets.push(start);
+      data.history.noofslots = 12;
+      data.history.slots = start >= 12 ? [] : Array.from({ length: 2 }, (_, index) => ({
+        nzo_id: String(start + index), name: `Item ${start + index}`,
+        status: "Completed", category: "TV", bytes: 100,
+      }));
+    }
+    return Response.json(data);
+  });
+  const result = await getDashboard({ historyPage: 3 });
+  assert.deepEqual(offsets, [20, 10]);
+  assert.equal(result.history.page, 2);
+  assert.equal(result.history.items.length, 2);
+});
+
+test("empty history has one empty page", async (t) => {
+  setup(t, false);
+  t.mock.method(global, "fetch", async (url) => {
+    const data = fixture(url);
+    if (url.searchParams.get("mode") === "history") {
+      data.history = { noofslots: 0, slots: [] };
+    }
+    return Response.json(data);
+  });
+  const result = await getDashboard({ historyPage: 5 });
+  assert.equal(result.history.page, 1);
+  assert.equal(result.history.total, 0);
+  assert.deepEqual(result.history.items, []);
+});
+
+test("invalid history pages are rejected before any backend request", async (t) => {
+  setup(t);
+  t.mock.method(global, "fetch", () => { throw new Error("must not fetch"); });
+  for (const historyPage of [0, -1, 1.5, NaN, Infinity, "2", 214748366, Number.MAX_SAFE_INTEGER]) {
+    await assert.rejects(getDashboard({ historyPage }), RangeError);
+  }
+  assert.equal(global.fetch.mock.calls.length, 0);
+});

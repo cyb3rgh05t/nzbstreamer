@@ -11,6 +11,11 @@
   const dashboardPanel = document.getElementById("dashboardPanel");
   const dashboardStatus = document.getElementById("dashboardStatus");
   const refreshDashboardButton = document.getElementById("refreshDashboard");
+  const historyPreviousButton = document.getElementById("dashboardHistoryPrevious");
+  const historyNextButton = document.getElementById("dashboardHistoryNext");
+  let dashboardHistoryPage = 1;
+  let dashboardHistoryPages = 1;
+  let dashboardHistoryAvailable = false;
   let dashboardTimer = null;
   let dashboardLoading = false;
   const settingsSections = Array.from(
@@ -1725,6 +1730,7 @@
     const tile = document.createElement("div");
     tile.className = "dashboard-tile";
     const title = document.createElement("span");
+    title.className = "dashboard-tile-label";
     title.textContent = label;
     const amount = document.createElement("strong");
     amount.textContent = value;
@@ -1755,9 +1761,22 @@
       title.textContent = item.name;
       const detail = document.createElement("p");
       detail.className = "hint";
-      detail.textContent = queue
-        ? `${item.status} | ${item.category || "Uncategorized"} | ${item.percentage}%`
-        : `${item.status} | ${item.category || "Uncategorized"} | ${dashboardBytes(item.bytes)}`;
+      const status = document.createElement("span");
+      status.className = "dashboard-status-badge";
+      const statusStyle = {
+        Completed: "success",
+        Failed: "failure",
+        Downloading: "active",
+        Queued: "queued",
+      }[item.status];
+      if (statusStyle) status.classList.add(`dashboard-status-${statusStyle}`);
+      status.textContent = item.status;
+      const metadata = document.createElement("span");
+      metadata.textContent = queue
+        ? `${item.category || "Uncategorized"} | ${item.percentage}%`
+        : `${item.category || "Uncategorized"} | ${dashboardBytes(item.bytes)}`;
+      detail.classList.add("dashboard-item-meta");
+      detail.append(status, metadata);
       row.append(title, detail);
       if (queue) {
         const progress = document.createElement("progress");
@@ -1770,15 +1789,22 @@
     });
   }
 
-  async function loadDashboard() {
+  function syncDashboardPagination() {
+    historyPreviousButton.disabled = dashboardLoading || !dashboardHistoryAvailable || dashboardHistoryPage <= 1;
+    historyNextButton.disabled = dashboardLoading || !dashboardHistoryAvailable || dashboardHistoryPage >= dashboardHistoryPages;
+  }
+
+  async function loadDashboard(requestedPage = dashboardHistoryPage) {
     if (dashboardLoading || activeSettingsView !== "dashboard" ||
         !document.body.classList.contains("has-config")) return;
     dashboardLoading = true;
+    syncDashboardPagination();
     refreshDashboardButton.disabled = true;
+    refreshDashboardButton.setAttribute("aria-busy", "true");
     dashboardStatus.textContent = "Loading dashboard...";
     dashboardStatus.classList.remove("error");
     try {
-      const data = await apiRequest("/admin/api/dashboard", { cache: "no-store" });
+      const data = await apiRequest(`/admin/api/dashboard?historyPage=${requestedPage}`, { cache: "no-store" });
       if (activeSettingsView !== "dashboard") return;
       const errors = document.getElementById("dashboardErrors");
       errors.replaceChildren();
@@ -1800,6 +1826,17 @@
       );
       renderDashboardList("dashboardQueue", data.queue?.items ?? null, true);
       renderDashboardList("dashboardHistory", data.history?.items ?? null);
+      dashboardHistoryAvailable = data.history !== null;
+      const historyPageLabel = document.getElementById("dashboardHistoryPage");
+      if (data.history) {
+        dashboardHistoryPage = data.history.page;
+        dashboardHistoryPages = Math.max(1, Math.ceil(data.history.total / data.history.pageSize));
+        const start = data.history.total ? (dashboardHistoryPage - 1) * data.history.pageSize + 1 : 0;
+        const end = Math.min(data.history.total, (dashboardHistoryPage - 1) * data.history.pageSize + data.history.items.length);
+        historyPageLabel.textContent = `Page ${dashboardHistoryPage} of ${dashboardHistoryPages} | ${start}-${end} of ${data.history.total} items`;
+      } else {
+        historyPageLabel.textContent = "History unavailable.";
+      }
       const providers = document.getElementById("dashboardProviders");
       providers.replaceChildren();
       if (data.providers?.length) {
@@ -1825,17 +1862,21 @@
         dashboardTile("NZBDav stream cache", `${data.caches.nzbdav.entries} entries`,
           `${data.caches.nzbdav.byStatus.ready} ready | ${data.caches.nzbdav.byStatus.pending} pending`),
       );
-      dashboardStatus.textContent = `Updated ${new Date(data.updatedAt).toLocaleTimeString()}. Showing up to 20 queue and history items.`;
+      dashboardStatus.textContent = `Updated ${new Date(data.updatedAt).toLocaleTimeString()}. Queue: up to 20 items. History: 10 items per page.`;
     } catch (error) {
       dashboardStatus.textContent = `Dashboard refresh failed: ${error.message}. Previously displayed values may be out of date.`;
       dashboardStatus.classList.add("error");
     } finally {
       dashboardLoading = false;
       refreshDashboardButton.disabled = false;
+      refreshDashboardButton.removeAttribute("aria-busy");
+      syncDashboardPagination();
     }
   }
 
-  refreshDashboardButton.addEventListener("click", loadDashboard);
+  refreshDashboardButton.addEventListener("click", () => loadDashboard());
+  historyPreviousButton.addEventListener("click", () => loadDashboard(dashboardHistoryPage - 1));
+  historyNextButton.addEventListener("click", () => loadDashboard(dashboardHistoryPage + 1));
 
   function syncSettingsNavigation() {
     const available = settingsSections.filter(isSettingsSectionAvailable);

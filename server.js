@@ -527,9 +527,15 @@ adminApiRouter.get("/config", (req, res) => {
 
 adminApiRouter.get("/dashboard", async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
+  const page = req.query.historyPage ?? "1";
+  const historyPage = typeof page === "string" && /^[1-9]\d*$/.test(page) ? Number(page) : NaN;
+  if (!Number.isSafeInteger(historyPage) || (historyPage - 1) * 10 > 2147483647) {
+    res.status(400).json({ error: "historyPage must be a positive page number within the supported range." });
+    return;
+  }
   try {
     const { getDashboard } = require("./src/services/adminDashboard");
-    res.json(await getDashboard());
+    res.json(await getDashboard({ historyPage }));
   } catch (error) {
     console.error("[ADMIN DASHBOARD] Could not load dashboard", error.message);
     res.status(500).json({ error: "Could not load dashboard data." });
