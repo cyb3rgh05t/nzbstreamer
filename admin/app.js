@@ -2272,10 +2272,21 @@
         }
       }
       showCopyFeedback("Copied!");
+      showCopiedUrl(url);
     } catch (error) {
       console.error("Failed to copy manifest URL", error);
       showCopyFeedback("Copy failed");
     }
+  }
+
+  let copiedUrlTimer;
+  function showCopiedUrl(url) {
+    const input = document.getElementById("copiedManifestUrl");
+    if (!input) return;
+    input.value = url;
+    input.classList.remove("hidden");
+    clearTimeout(copiedUrlTimer);
+    copiedUrlTimer = setTimeout(() => input.classList.add("hidden"), 10000);
   }
 
   async function copySavedManifestUrl() {

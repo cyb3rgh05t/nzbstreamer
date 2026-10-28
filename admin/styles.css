@@ -2071,6 +2071,15 @@ header h1 {
   font-family: ui-monospace, Consolas, monospace;
   text-overflow: ellipsis;
 }
+.manifest-copied-url {
+  width: 100%;
+  margin-top: 0.75rem;
+  font-family: ui-monospace, Consolas, monospace;
+  text-overflow: ellipsis;
+}
+.manifest-copied-url.hidden {
+  display: none;
+}
 .save-result-copy-row button {
   display: inline-flex;
   align-items: center;
