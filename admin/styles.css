@@ -2970,6 +2970,7 @@ body:not(.has-config) #authError {
 }
 body {
   letter-spacing: 0;
+  background-image: var(--bg-overlay);
 }
 code {
   background: var(--accent-soft);
@@ -3494,11 +3495,16 @@ button.ghost.danger:hover {
 body:not(.has-config) .container > .auth-card {
   width: min(430px, 100%);
   padding: 40px;
+  border-top: 2px solid var(--accent);
+  background:
+    linear-gradient(135deg, var(--accent-soft), transparent 55%),
+    var(--bg-card);
 }
 body:not(.has-config) #loadConfig {
   color: #17110a;
   border-color: var(--accent);
   background: linear-gradient(135deg, var(--accent), #ce8017);
+  box-shadow: 0 4px 16px rgba(229, 162, 9, 0.18);
 }
 body:not(.has-config) #loadConfig:hover {
   color: #17110a;
@@ -3518,6 +3524,32 @@ body:not(.has-config) #loadConfig:hover {
   width: 36px;
   height: 36px;
   filter: drop-shadow(0 8px 24px rgba(229, 162, 9, 0.18));
+}
+.login-intro {
+  display: grid;
+  gap: 0.6rem;
+  text-align: center;
+}
+.login-eyebrow {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.auth-card .login-intro h2 {
+  display: block;
+  margin: 0;
+  font-size: 1.65rem;
+  line-height: 1.2;
+}
+.auth-card .login-intro h2::before {
+  display: none;
+}
+.login-intro .hint {
+  color: var(--text-muted);
+  line-height: 1.65;
 }
 @keyframes rise {
   from {
@@ -3767,6 +3799,20 @@ input[type="checkbox"]:disabled {
   opacity: 0.45;
 }
 
+#refreshDashboard svg {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  color: var(--accent);
+  transform-origin: center;
+  transform-box: fill-box;
+}
+#refreshDashboard[aria-busy="true"] {
+  opacity: 1;
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
+  cursor: wait;
+}
 #refreshDashboard[aria-busy="true"] svg {
   animation: dashboard-refresh-spin 800ms linear infinite;
 }
