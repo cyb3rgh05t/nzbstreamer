@@ -2,7 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const embeddedNzbdav = require("./embeddedNzbdav");
 const cache = require("../cache");
-const { getDashboard } = require("./adminDashboard");
+const { getDashboard, clearHistory } = require("./adminDashboard");
 const getBackendConnection = embeddedNzbdav.getConnectionConfig;
 
 function setup(t, internal = true) {
@@ -286,4 +286,180 @@ test("history stays limited to ten entries when upstream ignores the SAB limit",
     assert.equal(result.history.page, page);
     assert.equal(result.history.total, 510);
   }
+});
+
+test("history exposes valid timestamps without inventing missing or invalid dates", async (t) => {
+  setup(t, false);
+  t.mock.method(global, "fetch", async (url) => {
+    const data = fixture(url);
+    if (data.history) {
+      data.history.slots = [1793178000, undefined, "invalid", 0, 1e30].map((completed) => ({
+        ...data.history.slots[0], completed,
+      }));
+    }
+    return Response.json(data);
+  });
+  const result = await getDashboard();
+  assert.equal(result.history.items[0].completedAt, new Date(1793178000 * 1000).toISOString());
+  assert.deepEqual(result.history.items.slice(1).map((item) => item.completedAt), [null, null, null, null]);
+});
+
+test("internal failed filter is sent before backend pagination and retains filtered total", async (t) => {
+  setup(t);
+  t.mock.method(global, "fetch", async (url) => {
+    const data = fixture(url);
+    if (data.history) {
+      assert.equal(url.searchParams.get("failed_only"), "1");
+      assert.equal(url.searchParams.get("start"), "10");
+      data.history.noofslots = 11;
+      data.history.slots[0].status = "Failed";
+    }
+    return Response.json(data);
+  });
+  const result = await getDashboard({ failedOnly: true, historyPage: 2 });
+  assert.equal(result.history.failedOnly, true);
+  assert.equal(result.history.total, 11);
+  assert.equal(result.history.page, 2);
+  assert.equal(result.history.items[0].status, "Failed");
+});
+
+test("external failed filter scans all backend pages before filtering and paginating", async (t) => {
+  setup(t, false);
+  const offsets = [];
+  t.mock.method(global, "fetch", async (url) => {
+    const data = fixture(url);
+    if (data.history) {
+      const start = Number(url.searchParams.get("start"));
+      offsets.push(start);
+      data.history.noofslots = 125;
+      data.history.slots = Array.from({ length: Math.min(100, 125 - start) }, (_, index) => ({
+        nzo_id: String(start + index), name: `Item ${start + index}`, bytes: 100,
+        status: (start + index) % 10 === 0 ? "Failed" : "Completed",
+      }));
+    }
+    return Response.json(data);
+  });
+  const result = await getDashboard({ failedOnly: true, historyPage: 2 });
+  assert.deepEqual(offsets, [0, 100]);
+  assert.equal(result.history.total, 13);
+  assert.equal(result.history.items.length, 3);
+  assert.equal(result.history.items[0].name, "Item 100");
+});
+
+test("clear history snapshots all pages before deleting batches without files", async (t) => {
+  setup(t);
+  const deleted = [];
+  let readCount = 0;
+  t.mock.method(global, "fetch", async (url, options) => {
+    if (url.searchParams.get("name") === "delete") {
+      assert.equal(readCount, 2);
+      assert.equal(options.method, "POST");
+      assert.equal(url.searchParams.get("del_completed_files"), "0");
+      assert.equal(url.searchParams.get("del_files"), "0");
+      const ids = url.searchParams.getAll("value");
+      assert.ok(ids.length <= 50);
+      deleted.push(...ids);
+      return Response.json({ status: true });
+    }
+    readCount++;
+    const start = Number(url.searchParams.get("start"));
+    return Response.json({ history: { noofslots: 125,
+      slots: Array.from({ length: Math.min(100, 125 - start) }, (_, index) => ({
+        nzo_id: String(start + index), name: "Test", bytes: 100,
+        status: index % 2 ? "Completed" : "Failed",
+      })) } });
+  });
+  assert.deepEqual(await clearHistory(), { removed: 125 });
+  assert.equal(new Set(deleted).size, 125);
+});
+
+test("external clear history uses comma-separated IDs and excludes file deletion", async (t) => {
+  setup(t, false);
+  t.mock.method(global, "fetch", async (url, options) => {
+    if (url.searchParams.get("name") === "delete") {
+      assert.equal(url.searchParams.get("value"), "one,two");
+      assert.equal(url.searchParams.get("del_files"), "0");
+      assert.equal(url.searchParams.get("del_completed_files"), "0");
+      assert.equal(options.method, "POST");
+      return Response.json({ status: true });
+    }
+    return Response.json({ history: { noofslots: 2, slots: ["one", "two"].map((nzo_id) => ({
+      nzo_id, name: "Test", status: "Completed", bytes: 0,
+    })) } });
+  });
+  assert.deepEqual(await clearHistory(), { removed: 2 });
+});
+
+test("clear history reports rejected deletion explicitly and releases its lock", async (t) => {
+  setup(t);
+  let deletes = 0;
+  t.mock.method(global, "fetch", async (url) => {
+    if (url.searchParams.get("name") === "delete") {
+      deletes++;
+      return Response.json({ status: false });
+    }
+    return Response.json(fixture(url));
+  });
+  await assert.rejects(clearHistory(), /0 entries already removed.*unexpected response/);
+  await assert.rejects(clearHistory(), /0 entries already removed.*unexpected response/);
+  assert.equal(deletes, 2);
+});
+
+test("clear history never deletes after an incomplete or nonadvancing snapshot", async (t) => {
+  setup(t);
+  t.mock.method(global, "fetch", async (url) => {
+    assert.equal(url.searchParams.has("name"), false);
+    const data = fixture(url);
+    data.history.noofslots = 10;
+    return Response.json(data);
+  });
+  await assert.rejects(clearHistory(), /did not advance/);
+});
+
+test("empty history clears without a delete request", async (t) => {
+  setup(t);
+  t.mock.method(global, "fetch", async (url) => {
+    assert.equal(url.searchParams.has("name"), false);
+    return Response.json({ history: { noofslots: 0, slots: [] } });
+  });
+  assert.deepEqual(await clearHistory(), { removed: 0 });
+});
+
+test("clear history reports partial deletion and does not continue after a failed batch", async (t) => {
+  setup(t);
+  let batches = 0;
+  t.mock.method(global, "fetch", async (url) => {
+    if (url.searchParams.get("name") === "delete") {
+      if (++batches === 2) throw new Error("private backend URL and key");
+      return Response.json({ status: true });
+    }
+    return Response.json({ history: { noofslots: 100,
+      slots: Array.from({ length: 100 }, (_, index) => ({
+        nzo_id: String(index), name: "Test", status: "Completed", bytes: 0,
+      })) } });
+  });
+  await assert.rejects(clearHistory(), {
+    message: "Could not clear history (50 entries already removed): Backend request failed",
+  });
+  assert.equal(batches, 2);
+});
+
+test("clear history rejects wildcard identifiers before any deletion", async (t) => {
+  setup(t);
+  t.mock.method(global, "fetch", async (url) => {
+    assert.equal(url.searchParams.has("name"), false);
+    const data = fixture(url);
+    data.history.slots[0].nzo_id = "ALL";
+    return Response.json(data);
+  });
+  await assert.rejects(clearHistory(), /unexpected history identifier/);
+});
+
+test("internal failed filter reports incompatible backend instead of showing completed jobs", async (t) => {
+  setup(t);
+  t.mock.method(console, "error", () => {});
+  t.mock.method(global, "fetch", async (url) => Response.json(fixture(url)));
+  const result = await getDashboard({ failedOnly: true });
+  assert.equal(result.history, null);
+  assert.deepEqual(result.errors, [{ source: "history", message: "Backend returned an unexpected response" }]);
 });

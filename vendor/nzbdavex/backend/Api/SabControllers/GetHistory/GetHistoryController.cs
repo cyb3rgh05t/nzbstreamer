@@ -23,6 +23,8 @@ public class GetHistoryController(
             query = query.Where(q => request.NzoIds.Contains(q.Id));
         if (request.Category != null)
             query = query.Where(q => q.Category == request.Category);
+        if (request.FailedOnly)
+            query = query.Where(q => q.DownloadStatus == HistoryItem.DownloadStatusOption.Failed);
 
         // get total count
         var totalCountPromise = query

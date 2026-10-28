@@ -3714,6 +3714,24 @@ input[type="checkbox"]:disabled {
   padding-top: 1rem;
   border-top: 1px solid var(--border-soft);
 }
+.dashboard-history-heading,
+.dashboard-history-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.dashboard-history-heading h3,
+.dashboard-history-actions .checkbox {
+  margin: 0;
+}
+.dashboard-history-actions .checkbox {
+  width: auto;
+}
+.dashboard-history-heading {
+  margin-bottom: 0.8rem;
+}
 .dashboard-pagination button:disabled {
   cursor: not-allowed;
   opacity: 0.45;

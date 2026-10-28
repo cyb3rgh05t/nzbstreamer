@@ -9,6 +9,7 @@ public class GetHistoryRequest
     public int Start { get; init; } = 0;
     public int Limit { get; init; } = int.MaxValue;
     public string? Category { get; init; }
+    public bool FailedOnly { get; init; }
     public List<Guid> NzoIds { get; init; } = [];
     public CancellationToken CancellationToken { get; set; }
 
@@ -20,6 +21,7 @@ public class GetHistoryRequest
         var pageSizeParam = context.GetRequestParam("pageSize");
         var nzoIdsParam = context.GetRequestParam("nzo_ids");
         Category = context.GetRequestParam("category");
+        FailedOnly = context.GetRequestParam("failed_only") == "1";
         CancellationToken = context.RequestAborted;
 
         if (startParam is not null)

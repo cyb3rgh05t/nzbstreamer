@@ -13,6 +13,11 @@
   const refreshDashboardButton = document.getElementById("refreshDashboard");
   const historyPreviousButton = document.getElementById("dashboardHistoryPrevious");
   const historyNextButton = document.getElementById("dashboardHistoryNext");
+  const historyFailedToggle = document.getElementById("dashboardHistoryFailed");
+  const historyClearButton = document.getElementById("dashboardHistoryClear");
+  const historyActionStatus = document.getElementById("dashboardHistoryActionStatus");
+  let dashboardHistoryClearing = false;
+  let dashboardFailedOnly = false;
   let dashboardHistoryPage = 1;
   let dashboardHistoryPages = 1;
   let dashboardHistoryAvailable = false;
@@ -1777,6 +1782,17 @@
         : `${item.category || "Uncategorized"} | ${dashboardBytes(item.bytes)}`;
       detail.classList.add("dashboard-item-meta");
       detail.append(status, metadata);
+      if (!queue) {
+        const timestamp = document.createElement(item.completedAt ? "time" : "span");
+        if (item.completedAt) {
+          timestamp.dateTime = item.completedAt;
+          timestamp.textContent = new Date(item.completedAt).toLocaleString();
+          timestamp.title = "History entry created (local time)";
+        } else {
+          timestamp.textContent = "Timestamp unavailable";
+        }
+        detail.appendChild(timestamp);
+      }
       row.append(title, detail);
       if (queue) {
         const progress = document.createElement("progress");
@@ -1790,12 +1806,15 @@
   }
 
   function syncDashboardPagination() {
-    historyPreviousButton.disabled = dashboardLoading || !dashboardHistoryAvailable || dashboardHistoryPage <= 1;
-    historyNextButton.disabled = dashboardLoading || !dashboardHistoryAvailable || dashboardHistoryPage >= dashboardHistoryPages;
+    const busy = dashboardLoading || dashboardHistoryClearing;
+    historyPreviousButton.disabled = busy || !dashboardHistoryAvailable || dashboardHistoryPage <= 1;
+    historyNextButton.disabled = busy || !dashboardHistoryAvailable || dashboardHistoryPage >= dashboardHistoryPages;
+    historyFailedToggle.disabled = busy;
+    historyClearButton.disabled = busy;
   }
 
   async function loadDashboard(requestedPage = dashboardHistoryPage) {
-    if (dashboardLoading || activeSettingsView !== "dashboard" ||
+    if (dashboardLoading || dashboardHistoryClearing || activeSettingsView !== "dashboard" ||
         !document.body.classList.contains("has-config")) return;
     dashboardLoading = true;
     syncDashboardPagination();
@@ -1804,7 +1823,7 @@
     dashboardStatus.textContent = "Loading dashboard...";
     dashboardStatus.classList.remove("error");
     try {
-      const data = await apiRequest(`/admin/api/dashboard?historyPage=${requestedPage}`, { cache: "no-store" });
+      const data = await apiRequest(`/admin/api/dashboard?historyPage=${requestedPage}&failedOnly=${historyFailedToggle.checked}`, { cache: "no-store" });
       if (activeSettingsView !== "dashboard") return;
       const errors = document.getElementById("dashboardErrors");
       errors.replaceChildren();
@@ -1818,7 +1837,7 @@
         dashboardTile("Backend", data.backend.mode === "internal" ? "Built-in NZBDavEx" : "External NZBDav",
           data.backend.reachable ? "Responding" : "Unavailable"),
         dashboardTile("Queued downloads", data.queue?.total ?? "Unavailable"),
-        dashboardTile("History items", data.history?.total ?? "Unavailable"),
+        dashboardTile(data.history?.failedOnly ? "Failed history items" : "History items", data.history?.total ?? "Unavailable"),
         dashboardTile("Active reads", data.overview?.activeReads ?? "Unavailable"),
         dashboardTile("Data served / minute", dashboardBytes(data.overview?.bytesServedPerMinute)),
         dashboardTile("Catalogue files", data.overview?.fileCount ?? "Unavailable",
@@ -1829,6 +1848,7 @@
       dashboardHistoryAvailable = data.history !== null;
       const historyPageLabel = document.getElementById("dashboardHistoryPage");
       if (data.history) {
+        dashboardFailedOnly = data.history.failedOnly;
         dashboardHistoryPage = data.history.page;
         dashboardHistoryPages = Math.max(1, Math.ceil(data.history.total / data.history.pageSize));
         const start = data.history.total ? (dashboardHistoryPage - 1) * data.history.pageSize + 1 : 0;
@@ -1864,6 +1884,7 @@
       );
       dashboardStatus.textContent = `Updated ${new Date(data.updatedAt).toLocaleTimeString()}. Queue: up to 20 items. History: 10 items per page.`;
     } catch (error) {
+      historyFailedToggle.checked = dashboardFailedOnly;
       dashboardStatus.textContent = `Dashboard refresh failed: ${error.message}. Previously displayed values may be out of date.`;
       dashboardStatus.classList.add("error");
     } finally {
@@ -1877,6 +1898,32 @@
   refreshDashboardButton.addEventListener("click", () => loadDashboard());
   historyPreviousButton.addEventListener("click", () => loadDashboard(dashboardHistoryPage - 1));
   historyNextButton.addEventListener("click", () => loadDashboard(dashboardHistoryPage + 1));
+  historyFailedToggle.addEventListener("change", () => loadDashboard(1));
+  historyClearButton.addEventListener("click", async () => {
+    if (dashboardLoading || dashboardHistoryClearing ||
+        !window.confirm("Clear ALL history entries, including completed and failed jobs? This cannot be undone. Virtual files are kept, but history-based catalogs and lookups may change.")) return;
+    dashboardHistoryClearing = true;
+    syncDashboardPagination();
+    refreshDashboardButton.disabled = true;
+    historyActionStatus.classList.remove("error");
+    historyActionStatus.textContent = "Clearing history...";
+    try {
+      const result = await apiRequest("/admin/api/dashboard/history/clear", {
+        method: "POST",
+        body: JSON.stringify({ confirm: "clear-all-history" }),
+      });
+      historyActionStatus.textContent = `Removed ${result.removed} history entries. Virtual files were kept.`;
+      dashboardHistoryPage = 1;
+    } catch (error) {
+      historyActionStatus.textContent = `Clear history failed: ${error.message}`;
+      historyActionStatus.classList.add("error");
+    } finally {
+      dashboardHistoryClearing = false;
+      refreshDashboardButton.disabled = false;
+      syncDashboardPagination();
+      await loadDashboard();
+    }
+  });
 
   function syncSettingsNavigation() {
     const available = settingsSections.filter(isSettingsSectionAvailable);

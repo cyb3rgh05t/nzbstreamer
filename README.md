@@ -45,8 +45,9 @@
 
 ### 🆕 Recent Enhancements
 
-- **Activity dashboard** — the admin sidebar's Dashboard shows the NZBDav queue and recent history in stacked panels, plus NZBStreamer disk/stream cache statistics. History is paginated server-side with 10 items per page and Previous/Next controls. Built-in NZBDavEx also supplies active reads, virtual catalogue size and provider byte usage. Data refreshes every 15 seconds while the dashboard tab is visible, keeping the selected history page; failures are shown explicitly. This view is read-only and requires an admin session.
+- **Activity dashboard** — the admin sidebar's Dashboard shows the NZBDav queue and recent history in stacked panels, plus NZBStreamer disk/stream cache statistics. History includes local timestamps (when supplied by the backend), 10 items per page, a Show failed filter and a confirmed Clear history action that keeps virtual files. Clearing applies to all history, regardless of filter, and can affect history-based catalogs and lookups. Built-in NZBDavEx also supplies active reads, virtual catalogue size and provider byte usage. Data refreshes every 15 seconds while the dashboard tab is visible, keeping the selected history page; failures are shown explicitly. Access requires an admin session.
   The built-in dashboard connection uses the backend-managed internal URL and API key; saved external NZBDav credentials do not override it.
+  A detailed German explanation of every metric, its data source and limitations is available in the [Dashboard guide](docs/dashboard-guide.md).
 - **Stream Protection modes** — unified protection selector in the dashboard: `none`, `auto-advance`, `health-check`, `health-check-auto-advance`, `smart-play-only`, and `smart-play`.
 - **Smart Play (background triage)** — background health checks add a dedicated Smart Play stream that can auto-pick healthy candidates while checks continue.
 - **Custom sorting chain** — `NZB_SORT_ORDER` drives result ordering with any combination of: `language`, `release_group`, `size`, `resolution`, `quality`, `encode`, `visual_tag`, `audio_tag`, `keyword`, `date`, `files`. Default chain: `quality,size,files`.

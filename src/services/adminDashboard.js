@@ -1,10 +1,11 @@
 const cache = require("../cache");
 const embeddedNzbdav = require("./embeddedNzbdav");
 
-async function requestBackend(connection, path, validate) {
+async function requestBackend(connection, path, validate, options = {}) {
   try {
     const url = new URL(path, `${connection.url.replace(/\/+$/, "")}/`);
     const response = await fetch(url, {
+      ...options,
       headers: { "x-api-key": connection.apiKey },
       signal: AbortSignal.timeout(8000),
       redirect: "error",
@@ -53,11 +54,41 @@ function isProviderList(data) {
     typeof item.overLimit === "boolean");
 }
 
-async function getHistoryPage(connection, page) {
+async function readHistorySnapshot(connection) {
+  const items = new Map();
+  let total = null;
+  for (let start = 0; total === null || start < total;) {
+    const data = await requestBackend(connection,
+      `api?mode=history&output=json&start=${start}&limit=100&pageSize=100`,
+      (data) => isSlotList(data, "history"));
+    total ??= data.history.noofslots;
+    if (total === 0) break;
+    const slots = data.history.slots;
+    if (!slots.length) throw new Error("History changed while loading. Please refresh and try again.");
+    const previousSize = items.size;
+    for (const item of slots) {
+      if (typeof item.nzo_id !== "string" || !/^[a-zA-Z0-9_-]+$/.test(item.nzo_id) || item.nzo_id.toLowerCase() === "all") {
+        throw new Error("Backend returned an unexpected history identifier.");
+      }
+      items.set(item.nzo_id, item);
+    }
+    if (items.size === previousSize) throw new Error("Backend did not advance history pagination.");
+    start += slots.length;
+  }
+  return [...items.values()];
+}
+
+async function getHistoryPage(connection, page, failedOnly) {
+  if (failedOnly && !embeddedNzbdav.isEnabled()) {
+    const items = (await readHistorySnapshot(connection)).filter((item) => item.status === "Failed");
+    page = Math.min(page, Math.max(1, Math.ceil(items.length / 10)));
+    return { page, history: { noofslots: items.length, slots: items.slice((page - 1) * 10, page * 10) } };
+  }
   const load = (number) => requestBackend(
     connection,
-    `api?mode=history&output=json&start=${(number - 1) * 10}&limit=10&pageSize=10`,
-    (data) => isSlotList(data, "history"),
+    `api?mode=history&output=json&start=${(number - 1) * 10}&limit=10&pageSize=10${failedOnly ? "&failed_only=1" : ""}`,
+    (data) => isSlotList(data, "history") &&
+      (!failedOnly || data.history.slots.every((item) => item.status === "Failed")),
   );
   let data = await load(page);
   const lastPage = Math.max(1, Math.ceil(data.history.noofslots / 10));
@@ -68,7 +99,46 @@ async function getHistoryPage(connection, page) {
   return { ...data, page };
 }
 
-async function getDashboard({ historyPage = 1 } = {}) {
+function historyTimestamp(value) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
+  const date = new Date(value * 1000);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+let clearingHistory = false;
+
+async function clearHistory() {
+  if (clearingHistory) throw new Error("History is already being cleared.");
+  const connection = embeddedNzbdav.getConnectionConfig();
+  if (!connection.url || !connection.apiKey) throw new Error("NZBDav is not configured.");
+  clearingHistory = true;
+  let removed = 0;
+  try {
+    const items = await readHistorySnapshot(connection);
+    for (let start = 0; start < items.length; start += 50) {
+      const batch = items.slice(start, start + 50);
+      const query = new URLSearchParams({
+        mode: "history", name: "delete", output: "json",
+        del_files: "0", del_completed_files: "0",
+      });
+      if (embeddedNzbdav.isEnabled()) {
+        batch.forEach((item) => query.append("value", item.nzo_id));
+      } else {
+        query.set("value", batch.map((item) => item.nzo_id).join(","));
+      }
+      await requestBackend(connection, `api?${query}`, (data) => data?.status === true, { method: "POST" });
+      removed += batch.length;
+    }
+    return { removed };
+  } catch (error) {
+    throw new Error(`Could not clear history (${removed} entries already removed): ${error.message}`);
+  } finally {
+    clearingHistory = false;
+  }
+}
+
+async function getDashboard({ historyPage = 1, failedOnly = false } = {}) {
+  if (typeof failedOnly !== "boolean") throw new TypeError("failedOnly must be a boolean.");
   if (!Number.isSafeInteger(historyPage) || historyPage < 1 ||
       !Number.isSafeInteger((historyPage - 1) * 10) ||
       (historyPage - 1) * 10 > 2147483647) {
@@ -108,7 +178,7 @@ async function getDashboard({ historyPage = 1 } = {}) {
   const responses = await Promise.allSettled(
     requests.map(([source, path, validate]) =>
       source === "history"
-        ? getHistoryPage(connection, historyPage)
+        ? getHistoryPage(connection, historyPage, failedOnly)
         : requestBackend(connection, path, validate)),
   );
   responses.forEach((response, index) => {
@@ -135,12 +205,14 @@ async function getDashboard({ historyPage = 1 } = {}) {
         total: data.history.noofslots,
         page: data.page,
         pageSize: 10,
+        failedOnly,
         items: data.history.slots.slice(0, 10).map((item) => ({
           id: item.nzo_id,
           name: item.name || item.nzb_name,
           status: item.status,
           category: item.category,
           bytes: item.bytes,
+          completedAt: historyTimestamp(item.completed),
         })),
       };
     } else if (source === "overview") {
@@ -163,4 +235,4 @@ async function getDashboard({ historyPage = 1 } = {}) {
   return result;
 }
 
-module.exports = { getDashboard };
+module.exports = { getDashboard, clearHistory };

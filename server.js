@@ -527,6 +527,10 @@ adminApiRouter.get("/config", (req, res) => {
 
 adminApiRouter.get("/dashboard", async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
+  if (req.query.failedOnly !== undefined && req.query.failedOnly !== "true" && req.query.failedOnly !== "false") {
+    res.status(400).json({ error: "failedOnly must be true or false." });
+    return;
+  }
   const page = req.query.historyPage ?? "1";
   const historyPage = typeof page === "string" && /^[1-9]\d*$/.test(page) ? Number(page) : NaN;
   if (!Number.isSafeInteger(historyPage) || (historyPage - 1) * 10 > 2147483647) {
@@ -535,10 +539,25 @@ adminApiRouter.get("/dashboard", async (req, res) => {
   }
   try {
     const { getDashboard } = require("./src/services/adminDashboard");
-    res.json(await getDashboard({ historyPage }));
+    res.json(await getDashboard({ historyPage, failedOnly: req.query.failedOnly === "true" }));
   } catch (error) {
     console.error("[ADMIN DASHBOARD] Could not load dashboard", error.message);
     res.status(500).json({ error: "Could not load dashboard data." });
+  }
+});
+
+adminApiRouter.post("/dashboard/history/clear", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  if (req.body?.confirm !== "clear-all-history") {
+    res.status(400).json({ error: "Explicit confirmation is required to clear all history." });
+    return;
+  }
+  try {
+    const { clearHistory } = require("./src/services/adminDashboard");
+    res.json(await clearHistory());
+  } catch (error) {
+    console.error("[ADMIN DASHBOARD] Clear history failed", error.message);
+    res.status(502).json({ error: error.message });
   }
 });
 
