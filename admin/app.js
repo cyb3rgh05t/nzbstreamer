@@ -10,6 +10,7 @@
   const currentViewTitle = document.getElementById("currentViewTitle");
   const dashboardPanel = document.getElementById("dashboardPanel");
   const dashboardStatus = document.getElementById("dashboardStatus");
+  const dashboardUpdated = document.getElementById("dashboardUpdated");
   const refreshDashboardButton = document.getElementById("refreshDashboard");
   const historyPreviousButton = document.getElementById("dashboardHistoryPrevious");
   const historyNextButton = document.getElementById("dashboardHistoryNext");
@@ -1825,6 +1826,7 @@
     refreshDashboardButton.disabled = true;
     refreshDashboardButton.setAttribute("aria-busy", "true");
     dashboardStatus.textContent = "Loading dashboard...";
+    dashboardStatus.classList.remove("hidden");
     dashboardStatus.classList.remove("error");
     try {
       const data = await apiRequest(`/admin/api/dashboard?historyPage=${requestedPage}&failedOnly=${historyFailedToggle.checked}`, { cache: "no-store" });
@@ -1886,21 +1888,12 @@
         dashboardTile("NZBDav stream cache", `${data.caches.nzbdav.entries} entries`,
           `${data.caches.nzbdav.byStatus.ready} ready | ${data.caches.nzbdav.byStatus.pending} pending`),
       );
-      dashboardStatus.replaceChildren();
-      for (const [label, value] of [
-        ["Updated", new Date(data.updatedAt).toLocaleTimeString()],
-        ["Queue", "Up to 20 items"],
-        ["History", "10 items / page"],
-      ]) {
-        const item = document.createElement("span");
-        item.className = "dashboard-summary-item";
-        const title = document.createElement("span");
-        title.textContent = label;
-        const amount = document.createElement("strong");
-        amount.textContent = value;
-        item.append(title, amount);
-        dashboardStatus.appendChild(item);
-      }
+      const updatedTime = document.createElement("strong");
+      updatedTime.textContent = new Date(data.updatedAt).toLocaleTimeString();
+      dashboardUpdated.replaceChildren("Updated ", updatedTime);
+      dashboardUpdated.classList.remove("hidden");
+      dashboardStatus.textContent = "";
+      dashboardStatus.classList.add("hidden");
     } catch (error) {
       historyFailedToggle.checked = dashboardFailedOnly;
       dashboardStatus.textContent = `Dashboard refresh failed: ${error.message}. Previously displayed values may be out of date.`;

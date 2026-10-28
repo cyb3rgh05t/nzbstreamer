@@ -3570,6 +3570,7 @@ input[type="checkbox"]:disabled {
 }
 .dashboard-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
@@ -3577,21 +3578,13 @@ input[type="checkbox"]:disabled {
 .dashboard-heading h3 {
   margin-top: 0;
 }
-.dashboard-summary {
+.dashboard-heading-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.65rem;
-  margin: 1rem 0 1.4rem;
-  padding: 0.8rem 1rem;
-  border: 1px solid var(--border-soft);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius-md);
-  background: linear-gradient(110deg, var(--accent-soft), transparent), var(--bg-input);
-  color: var(--text-secondary);
-  font-size: 0.8rem;
 }
-.dashboard-summary-item {
+.dashboard-updated {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -3600,14 +3593,12 @@ input[type="checkbox"]:disabled {
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
 }
-.dashboard-summary-item strong {
+.dashboard-updated strong {
   color: var(--accent);
   font-weight: 600;
-}
-.dashboard-summary.error {
-  border-left-color: var(--danger);
-  color: var(--danger);
 }
 .dashboard-tiles,
 .dashboard-columns {

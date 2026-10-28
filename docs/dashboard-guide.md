@@ -14,7 +14,7 @@ Schlussfolgerungen man daraus ziehen darf.
 
 Nach der Anmeldung startet die Admin-Oberflaeche im Dashboard. Die Reihenfolge ist:
 
-1. Ueberschrift, Refresh, Aktualisierungsstatus und eventuelle Fehlermeldungen.
+1. Ueberschrift, Updated-Badge neben Refresh und eventuelle Fehlermeldungen.
 2. Sechs Kennzahlen: Backend, Queued downloads, History items, Active reads,
    Data served / minute und Catalogue files.
 3. Provider usage.
@@ -337,8 +337,7 @@ Das ist der vom Backend gemeldete **Auftragsfortschritt**, kein
 Wiedergabefortschritt und keine Aussage darueber, wie viel eines Films dauerhaft
 lokal gespeichert ist.
 
-Die Anfrage fordert mit `start=0&limit=20` die ersten 20 Eintraege an. Die
-Statuszeile beschreibt das als `Queue: up to 20 items`.
+Die Anfrage fordert mit `start=0&limit=20` die ersten 20 Eintraege an.
 Die Queue hat aktuell keine eigene Pagination und im Gegensatz zur History
 keine zusaetzliche serverseitige Abschneidung der Antwort. Bei Backends, die
 mehr Slots zurueckliefern, ist dies daher keine harte Anzeigeobergrenze.
