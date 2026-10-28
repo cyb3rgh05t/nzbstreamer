@@ -30,17 +30,16 @@
   let sessionMonitorTimer = null;
   let sessionExpiredReturnToConfig = false;
   let sessionExpiredViewTitle = "";
-  const manifestDescription = document.getElementById("manifestDescription");
   const saveStatus = document.getElementById("saveStatus");
   const saveResult = document.getElementById("saveResult");
   const saveResultTitle = document.getElementById("saveResultTitle");
   const saveResultMessage = document.getElementById("saveResultMessage");
   const saveResultUrlRow = document.getElementById("saveResultUrlRow");
   const savedManifestUrl = document.getElementById("savedManifestUrl");
-  const savedManifestStatus = document.getElementById("savedManifestStatus");
+  let saveResultTimer = null;
+  const copyFeedbackTimers = new Map();
   const copySavedManifest = document.getElementById("copySavedManifest");
   const copyManifestButton = document.getElementById("copyManifest");
-  const copyManifestStatus = document.getElementById("copyManifestStatus");
   const stremioWebButton = document.getElementById("installStremioWeb");
   const stremioAppButton = document.getElementById("installStremioApp");
   const healthPaidWarning = document.getElementById("healthPaidWarning");
@@ -170,7 +169,6 @@
   const easynewsHttpsWarning = document.getElementById("easynewsHttpsWarning");
 
   let currentManifestUrl = "";
-  let copyStatusTimer = null;
 
   let runtimeEnvPath = null;
   let allowNewznabTestSearch = false;
@@ -449,8 +447,10 @@
   }
 
   function hideSaveResult() {
+    clearTimeout(saveResultTimer);
+    saveResultTimer = null;
     saveResult.classList.add("hidden");
-    savedManifestStatus.textContent = "";
+    resetCopyFeedback(copySavedManifest);
   }
 
   function showSaveResult(title, message, url) {
@@ -458,10 +458,12 @@
     saveResultMessage.textContent = message;
     savedManifestUrl.value = url || "";
     saveResultUrlRow.classList.toggle("hidden", !url);
-    savedManifestStatus.textContent = "";
+    clearTimeout(saveResultTimer);
+    resetCopyFeedback(copySavedManifest);
     saveStatus.textContent = "";
     saveResult.classList.remove("hidden");
     saveResult.scrollIntoView({ block: "start", behavior: "smooth" });
+    saveResultTimer = setTimeout(hideSaveResult, 5000);
   }
 
   function parseBool(value) {
@@ -1680,9 +1682,6 @@
       loadProfiles();
       updateManifestLink(data.manifestUrl || "");
       runtimeEnvPath = data.runtimeEnvPath || null;
-      const baseMessage =
-        "Use the install buttons once HTTPS and your shared token are set.";
-      manifestDescription.textContent = baseMessage;
       startAdminSessionMonitor();
     } catch (error) {
       authError.textContent = error.message;
@@ -1700,9 +1699,7 @@
     const hasUrl = Boolean(currentManifestUrl);
     setCopyButtonState(hasUrl);
     setInstallButtonsState(hasUrl);
-    if (copyManifestStatus) {
-      copyManifestStatus.textContent = "";
-    }
+    resetCopyFeedback(copyManifestButton);
   }
 
   // ... (existing functions)
@@ -1776,14 +1773,21 @@
       }[item.status];
       if (statusStyle) status.classList.add(`dashboard-status-${statusStyle}`);
       status.textContent = item.status;
-      const metadata = document.createElement("span");
-      metadata.textContent = queue
-        ? `${item.category || "Uncategorized"} | ${item.percentage}%`
-        : `${item.category || "Uncategorized"} | ${dashboardBytes(item.bytes)}`;
       detail.classList.add("dashboard-item-meta");
-      detail.append(status, metadata);
+      detail.appendChild(status);
+      for (const [label, value] of [
+        ["Category", item.category || "Uncategorized"],
+        [queue ? "Progress" : "Size", queue ? `${item.percentage}%` : dashboardBytes(item.bytes)],
+      ]) {
+        const metadata = document.createElement("span");
+        metadata.className = "dashboard-meta-badge";
+        metadata.textContent = value;
+        metadata.title = label;
+        detail.appendChild(metadata);
+      }
       if (!queue) {
         const timestamp = document.createElement(item.completedAt ? "time" : "span");
+        timestamp.className = "dashboard-meta-badge";
         if (item.completedAt) {
           timestamp.dateTime = item.completedAt;
           timestamp.textContent = new Date(item.completedAt).toLocaleString();
@@ -1882,7 +1886,21 @@
         dashboardTile("NZBDav stream cache", `${data.caches.nzbdav.entries} entries`,
           `${data.caches.nzbdav.byStatus.ready} ready | ${data.caches.nzbdav.byStatus.pending} pending`),
       );
-      dashboardStatus.textContent = `Updated ${new Date(data.updatedAt).toLocaleTimeString()}. Queue: up to 20 items. History: 10 items per page.`;
+      dashboardStatus.replaceChildren();
+      for (const [label, value] of [
+        ["Updated", new Date(data.updatedAt).toLocaleTimeString()],
+        ["Queue", "Up to 20 items"],
+        ["History", "10 items / page"],
+      ]) {
+        const item = document.createElement("span");
+        item.className = "dashboard-summary-item";
+        const title = document.createElement("span");
+        title.textContent = label;
+        const amount = document.createElement("strong");
+        amount.textContent = value;
+        item.append(title, amount);
+        dashboardStatus.appendChild(item);
+      }
     } catch (error) {
       historyFailedToggle.checked = dashboardFailedOnly;
       dashboardStatus.textContent = `Dashboard refresh failed: ${error.message}. Previously displayed values may be out of date.`;
@@ -2140,6 +2158,14 @@
       });
       categoryGroups.get(category).appendChild(button);
     });
+    configForm.querySelectorAll("[data-settings-section-link]").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        const section = document.getElementById(link.hash.slice(1));
+        if (!section || !isSettingsSectionAvailable(section)) return;
+        settingsNav.querySelector(`[data-view="${section.dataset.navView}"]`)?.click();
+      });
+    });
     const manifestButton = document.createElement("button");
     manifestButton.type = "button";
     manifestButton.className = "sidebar-link";
@@ -2199,11 +2225,7 @@
     if (!copyManifestButton) return;
     copyManifestButton.disabled = !enabled;
     if (!enabled) {
-      if (copyStatusTimer) {
-        clearTimeout(copyStatusTimer);
-        copyStatusTimer = null;
-      }
-      if (copyManifestStatus) copyManifestStatus.textContent = "";
+      resetCopyFeedback(copyManifestButton);
     }
   }
 
@@ -2246,8 +2268,11 @@
         textarea.style.left = "-9999px";
         document.body.appendChild(textarea);
         textarea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
+        try {
+          if (!document.execCommand("copy")) throw new Error("Copy failed");
+        } finally {
+          textarea.remove();
+        }
       }
       showCopyFeedback("Copied!");
     } catch (error) {
@@ -2264,20 +2289,25 @@
         savedManifestUrl.select();
         if (!document.execCommand("copy")) throw new Error("Copy failed");
       }
-      savedManifestStatus.textContent = "Copied!";
+      showCopyFeedback("Copied!", copySavedManifest);
     } catch (error) {
-      savedManifestStatus.textContent = "Copy failed";
+      showCopyFeedback("Copy failed", copySavedManifest);
     }
   }
 
-  function showCopyFeedback(message) {
-    if (!copyManifestStatus) return;
-    copyManifestStatus.textContent = message;
-    if (copyStatusTimer) clearTimeout(copyStatusTimer);
-    copyStatusTimer = setTimeout(() => {
-      copyManifestStatus.textContent = "";
-      copyStatusTimer = null;
-    }, 2500);
+  function resetCopyFeedback(button) {
+    if (!button) return;
+    clearTimeout(copyFeedbackTimers.get(button));
+    copyFeedbackTimers.delete(button);
+    const label = button.querySelector("[data-copy-label]");
+    if (label) label.textContent = button.dataset.copyDefault;
+  }
+
+  function showCopyFeedback(message, button = copyManifestButton) {
+    if (!button) return;
+    resetCopyFeedback(button);
+    button.querySelector("[data-copy-label]").textContent = message;
+    copyFeedbackTimers.set(button, setTimeout(() => resetCopyFeedback(button), 2500));
   }
 
   function getStremioProtocolUrl(url) {

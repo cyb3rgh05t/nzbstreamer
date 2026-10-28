@@ -87,7 +87,7 @@
           </div>
           <button type="button" class="secondary" id="refreshDashboard"><i data-lucide="refresh-cw" aria-hidden="true"></i>Refresh</button>
         </div>
-        <p id="dashboardStatus" class="hint" role="status"></p>
+        <div id="dashboardStatus" class="dashboard-summary" role="status" aria-atomic="true"></div>
         <div id="dashboardErrors" role="alert"></div>
         <div id="dashboardTiles" class="dashboard-tiles"></div>
         <section class="dashboard-block"><h3><i data-lucide="activity" aria-hidden="true"></i>Provider usage</h3><div id="dashboardProviders"></div></section>
@@ -202,7 +202,7 @@
               <span class="field-hint">Enable this if you're seeing incorrect or unrelated results — it matches strictly by ID, so only the correct title is returned. Applies to both manager and direct Newznab searches; ID-only mode skips all text queries (localized/alternate-title searches won't run).</span>
             </label>
           </div>
-          <p class="hint hidden" data-direct-newznab-note>Direct Newznab selected — add and manage your indexers in the <strong>Direct Newznab Indexers</strong> section just below.</p>
+          <p class="hint hidden" data-direct-newznab-note>Direct Newznab selected — add and manage your indexers in the <a href="#newznabGroup" data-settings-section-link>Direct Newznab Indexers</a> section.</p>
           <div class="inline-actions" data-manager-field>
             <button type="button" class="secondary" data-test="indexer">Test Connection</button>
             <span class="status-message" data-test-status="indexer"></span>
@@ -1171,9 +1171,8 @@ health'></textarea>
           <label for="savedManifestUrl">Manifest URL</label>
           <div class="save-result-copy-row">
             <input id="savedManifestUrl" type="text" readonly spellcheck="false" autocomplete="off" />
-            <button type="button" class="secondary" id="copySavedManifest"><i data-lucide="copy" aria-hidden="true"></i>Copy URL</button>
+            <button type="button" class="secondary" id="copySavedManifest" data-copy-default="Copy URL"><i data-lucide="copy" aria-hidden="true"></i><span data-copy-label aria-live="polite">Copy URL</span></button>
           </div>
-          <span id="savedManifestStatus" class="copy-status" role="status"></span>
         </div>
       </section>
 
@@ -1182,15 +1181,10 @@ health'></textarea>
           <span class="manifest-icon"><i data-lucide="puzzle" aria-hidden="true"></i></span>
           <div><h2>Install your addon</h2><p class="hint">Choose Stremio Web, open the app, or copy the manifest link.</p></div>
         </div>
-        <div class="manifest-info">
-          <strong><i data-lucide="link" aria-hidden="true"></i>Manifest connection</strong>
-          <p id="manifestDescription" class="hint">Use the buttons to copy or install the addon once HTTPS and your token are set.</p>
-        </div>
         <div class="manifest-actions">
           <button type="button" class="primary" id="installStremioWeb" disabled><i data-lucide="globe" aria-hidden="true"></i>Install via Stremio Web</button>
           <button type="button" class="secondary" id="installStremioApp" disabled><i data-lucide="external-link" aria-hidden="true"></i>Open in Stremio App</button>
-          <button type="button" class="secondary" id="copyManifest" disabled><i data-lucide="copy" aria-hidden="true"></i>Copy Manifest URL</button>
-          <span id="copyManifestStatus" class="copy-status" aria-live="polite"></span>
+          <button type="button" class="secondary" id="copyManifest" data-copy-default="Copy Manifest URL" disabled><i data-lucide="copy" aria-hidden="true"></i><span data-copy-label aria-live="polite">Copy Manifest URL</span></button>
         </div>
       </div>
 
