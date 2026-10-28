@@ -36,8 +36,8 @@ loescht History-Eintraege, behaelt aber virtuelle Dateien.
   Nach der Rueckkehr kann es bis zum naechsten Intervall dauern.
 - Beim Wechsel in einen anderen Admin-Bereich stoppt das Dashboard-Polling.
 - Refresh loest eine manuelle Abfrage aus. Waehrenddessen ist der Button
-  deaktiviert; sein Symbol dreht sich, sofern reduzierte Bewegung nicht
-  aktiviert ist.
+  deaktiviert und zeigt `Refreshing...`; sein Symbol dreht sich, sofern reduzierte
+  Bewegung nicht aktiviert ist. Es erscheint keine separate Ladezeile.
 - Es gibt keine parallelen Dashboard-Ladevorgaenge im selben UI.
 - Die ausgewaehlte History-Seite bleibt beim Aktualisieren erhalten.
 

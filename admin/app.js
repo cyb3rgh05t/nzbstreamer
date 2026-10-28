@@ -12,6 +12,7 @@
   const dashboardStatus = document.getElementById("dashboardStatus");
   const dashboardUpdated = document.getElementById("dashboardUpdated");
   const refreshDashboardButton = document.getElementById("refreshDashboard");
+  const refreshDashboardLabel = document.getElementById("refreshDashboardLabel");
   const historyPreviousButton = document.getElementById("dashboardHistoryPrevious");
   const historyNextButton = document.getElementById("dashboardHistoryNext");
   const historyFailedToggle = document.getElementById("dashboardHistoryFailed");
@@ -1825,8 +1826,9 @@
     syncDashboardPagination();
     refreshDashboardButton.disabled = true;
     refreshDashboardButton.setAttribute("aria-busy", "true");
-    dashboardStatus.textContent = "Loading dashboard...";
-    dashboardStatus.classList.remove("hidden");
+    refreshDashboardLabel.textContent = "Refreshing...";
+    dashboardStatus.textContent = "";
+    dashboardStatus.classList.add("hidden");
     dashboardStatus.classList.remove("error");
     try {
       const data = await apiRequest(`/admin/api/dashboard?historyPage=${requestedPage}&failedOnly=${historyFailedToggle.checked}`, { cache: "no-store" });
@@ -1897,11 +1899,13 @@
     } catch (error) {
       historyFailedToggle.checked = dashboardFailedOnly;
       dashboardStatus.textContent = `Dashboard refresh failed: ${error.message}. Previously displayed values may be out of date.`;
+      dashboardStatus.classList.remove("hidden");
       dashboardStatus.classList.add("error");
     } finally {
       dashboardLoading = false;
       refreshDashboardButton.disabled = false;
       refreshDashboardButton.removeAttribute("aria-busy");
+      refreshDashboardLabel.textContent = "Refresh";
       syncDashboardPagination();
     }
   }
