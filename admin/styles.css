@@ -3210,7 +3210,11 @@ h3 {
 }
 .profile-switcher {
   border-top: 2px solid var(--accent);
-  background-image: linear-gradient(120deg, var(--accent-soft), transparent 55%);
+  background-image: linear-gradient(
+    120deg,
+    var(--accent-soft),
+    transparent 55%
+  );
 }
 .profile-switcher-heading {
   display: flex;
@@ -3497,8 +3501,7 @@ body:not(.has-config) .container > .auth-card {
   padding: 40px;
   border-top: 2px solid var(--accent);
   background:
-    linear-gradient(135deg, var(--accent-soft), transparent 55%),
-    var(--bg-card);
+    linear-gradient(135deg, var(--accent-soft), transparent 55%), var(--bg-card);
 }
 body:not(.has-config) #loadConfig {
   color: #17110a;
@@ -3574,7 +3577,11 @@ input[type="checkbox"] {
   border: 1px solid var(--border-strong);
   border-radius: 999px;
   background-color: var(--surface-raised);
-  background-image: radial-gradient(circle, var(--text-muted) 0 7px, transparent 7.5px);
+  background-image: radial-gradient(
+    circle,
+    var(--text-muted) 0 7px,
+    transparent 7.5px
+  );
   background-repeat: no-repeat;
   background-position: left 2px center;
   background-size: 18px 18px;
@@ -3589,7 +3596,11 @@ input[type="checkbox"] {
 input[type="checkbox"]:checked {
   border-color: var(--accent);
   background-color: var(--accent-soft);
-  background-image: radial-gradient(circle, var(--accent) 0 7px, transparent 7.5px);
+  background-image: radial-gradient(
+    circle,
+    var(--accent) 0 7px,
+    transparent 7.5px
+  );
   background-position: right 2px center;
 }
 .checkbox input[type="checkbox"] {
@@ -3650,6 +3661,31 @@ input[type="checkbox"]:disabled {
 .dashboard-columns {
   grid-template-columns: minmax(0, 1fr);
 }
+.dashboard-health-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.dashboard-health-status::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+.dashboard-health-status.healthy {
+  color: #43b581;
+}
+.dashboard-health-status.unhealthy {
+  color: #ef7373;
+}
+@media (min-width: 1000px) {
+  .dashboard-services {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 .dashboard-tile,
 .dashboard-block {
   min-width: 0;
@@ -3682,7 +3718,11 @@ input[type="checkbox"]:disabled {
 }
 #dashboardPanel {
   border-top: 2px solid var(--accent);
-  background-image: linear-gradient(135deg, var(--accent-soft), transparent 35%);
+  background-image: linear-gradient(
+    135deg,
+    var(--accent-soft),
+    transparent 35%
+  );
 }
 #dashboardPanel h3 {
   display: flex;
@@ -3700,7 +3740,9 @@ input[type="checkbox"]:disabled {
   position: relative;
   overflow: hidden;
   border-top: 2px solid var(--line-strong);
-  background: linear-gradient(135deg, var(--accent-soft), transparent 85%), var(--bg-input);
+  background:
+    linear-gradient(135deg, var(--accent-soft), transparent 85%),
+    var(--bg-input);
 }
 .dashboard-tile::after {
   content: "";
@@ -3723,7 +3765,8 @@ input[type="checkbox"]:disabled {
 }
 .dashboard-block {
   border-left: 3px solid var(--line-strong);
-  background: linear-gradient(90deg, var(--accent-soft), transparent 40%), var(--bg-input);
+  background:
+    linear-gradient(90deg, var(--accent-soft), transparent 40%), var(--bg-input);
 }
 .dashboard-block > h3 {
   padding-bottom: 0.8rem;
@@ -3831,7 +3874,11 @@ input[type="checkbox"]:disabled {
   gap: 1.25rem;
   grid-template-columns: minmax(0, 1fr);
   border-top: 2px solid var(--accent);
-  background-image: linear-gradient(120deg, var(--accent-soft), transparent 55%);
+  background-image: linear-gradient(
+    120deg,
+    var(--accent-soft),
+    transparent 55%
+  );
 }
 .manifest-heading {
   grid-column: 1 / -1;
@@ -3887,7 +3934,11 @@ input[type="checkbox"]:disabled {
 
 .container > #configSection .group.addon-metadata {
   border-top: 2px solid var(--accent);
-  background-image: linear-gradient(120deg, var(--accent-soft), transparent 55%);
+  background-image: linear-gradient(
+    120deg,
+    var(--accent-soft),
+    transparent 55%
+  );
 }
 .addon-metadata > h3 {
   padding-bottom: 1rem;

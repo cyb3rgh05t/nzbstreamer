@@ -6,12 +6,16 @@ const { getDashboard, clearHistory } = require("./adminDashboard");
 const getBackendConnection = embeddedNzbdav.getConnectionConfig;
 
 function setup(t, internal = true) {
-  const saved = { url: process.env.NZBDAV_URL, key: process.env.NZBDAV_API_KEY };
+  const saved = {
+    url: process.env.NZBDAV_URL,
+    key: process.env.NZBDAV_API_KEY,
+  };
   process.env.NZBDAV_URL = "http://127.0.0.1:7071";
   process.env.NZBDAV_API_KEY = "test-backend-key";
   t.after(() => {
     for (const [name, value] of Object.entries({
-      NZBDAV_URL: saved.url, NZBDAV_API_KEY: saved.key,
+      NZBDAV_URL: saved.url,
+      NZBDAV_API_KEY: saved.key,
     })) {
       if (value === undefined) delete process.env[name];
       else process.env[name] = value;
@@ -25,26 +29,69 @@ function setup(t, internal = true) {
   t.mock.method(cache, "getAllCacheStats", () => ({
     stream: { entries: 2, bytes: 100 },
     nzbdav: { entries: 1, byStatus: { ready: 1, pending: 0 } },
-    disk: { entries: 3, totalBytes: 200, maxBytes: 1000, cacheDir: "private-path" },
+    disk: {
+      entries: 3,
+      totalBytes: 200,
+      maxBytes: 1000,
+      cacheDir: "private-path",
+    },
   }));
 }
 
 function fixture(url) {
   if (url.pathname === "/api/get-overview-stats") {
-    return { tiles: { activeReads: 2, bytesServedPerMinute: 123, errorsPerMinute: 0 },
-      catalogue: { fileCount: 4, totalBytes: 999 } };
+    return {
+      tiles: { activeReads: 2, bytesServedPerMinute: 123, errorsPerMinute: 0 },
+      catalogue: { fileCount: 4, totalBytes: 999 },
+    };
   }
   if (url.pathname === "/api/get-provider-usage") {
-    return { providers: [{ host: "provider", nickname: "Primary", bytesUsed: 55,
-      byteLimit: 100, overLimit: false, password: "secret" }] };
+    return {
+      providers: [
+        {
+          host: "provider",
+          nickname: "Primary",
+          bytesUsed: 55,
+          byteLimit: 100,
+          overLimit: false,
+          password: "secret",
+        },
+      ],
+    };
   }
   if (url.searchParams.get("mode") === "queue") {
-    return { queue: { noofslots: 1, slots: [{ nzo_id: "1", filename: "<test>",
-      status: "Downloading", cat: "Movies", true_percentage: "45",
-      percentage: "5", privateUrl: "secret" }] } };
+    return {
+      queue: {
+        noofslots: 1,
+        slots: [
+          {
+            nzo_id: "1",
+            filename: "<test>",
+            status: "Downloading",
+            cat: "Movies",
+            true_percentage: "45",
+            percentage: "5",
+            privateUrl: "secret",
+          },
+        ],
+      },
+    };
   }
-  return { history: { noofslots: 1, slots: [{ nzo_id: "2", name: "Done",
-    category: "TV", bytes: 1024, status: "Completed", storage: "private-path" }] } };
+  return {
+    history: {
+      noofslots: 1,
+      slots: [
+        {
+          nzo_id: "2",
+          name: "Done",
+          category: "TV",
+          bytes: 1024,
+          status: "Completed",
+          storage: "private-path",
+        },
+      ],
+    },
+  };
 }
 
 test("internal dashboard aggregates and allowlists backend data", async (t) => {
@@ -81,18 +128,47 @@ test("external backend only requests SAB-compatible data", async (t) => {
   assert.equal(result.backend.mode, "external");
 });
 
+test("dashboard includes cached service checks even without a configured backend", async (t) => {
+  setup(t, false);
+  delete process.env.NZBDAV_URL;
+  const healthMonitor = require("./healthMonitor");
+  const services = [
+    {
+      id: "newznab:01",
+      kind: "indexer",
+      name: "Indexer A",
+      status: "healthy",
+      message: "Connection verified.",
+      checkedAt: new Date().toISOString(),
+    },
+  ];
+  t.mock.method(healthMonitor, "getSnapshot", () => services);
+  t.mock.method(healthMonitor, "checkNow", () => {
+    throw new Error("dashboard must not probe");
+  });
+  t.mock.method(global, "fetch", () => {
+    throw new Error("must not fetch");
+  });
+  const result = await getDashboard();
+  assert.deepEqual(result.services, services);
+  assert.equal(global.fetch.mock.calls.length, 0);
+});
+
 test("partial failures retain cache and history without pretending queue is empty", async (t) => {
   setup(t);
   t.mock.method(console, "error", () => {});
   t.mock.method(global, "fetch", async (url) => {
-    if (url.searchParams.get("mode") === "queue") return new Response("private response", { status: 503 });
+    if (url.searchParams.get("mode") === "queue")
+      return new Response("private response", { status: 503 });
     return Response.json(fixture(url));
   });
   const result = await getDashboard();
   assert.equal(result.queue, null);
   assert.equal(result.history.items.length, 1);
   assert.equal(result.caches.disk.entries, 3);
-  assert.deepEqual(result.errors, [{ source: "queue", message: "Backend returned HTTP 503" }]);
+  assert.deepEqual(result.errors, [
+    { source: "queue", message: "Backend returned HTTP 503" },
+  ]);
   assert.equal(JSON.stringify(result).includes("private response"), false);
 });
 
@@ -113,7 +189,9 @@ test("invalid responses and network errors are reported without upstream details
 test("unconfigured backend reports setup issue and keeps cache statistics", async (t) => {
   setup(t);
   delete process.env.NZBDAV_URL;
-  t.mock.method(global, "fetch", () => { throw new Error("must not fetch"); });
+  t.mock.method(global, "fetch", () => {
+    throw new Error("must not fetch");
+  });
   const result = await getDashboard();
   assert.equal(global.fetch.mock.calls.length, 0);
   assert.equal(result.errors[0].source, "backend");
@@ -155,7 +233,10 @@ test("queue progress stays within 0..100 and backend authentication errors are v
     return Response.json(data);
   });
   const result = await getDashboard();
-  assert.deepEqual(result.queue.items.map((item) => item.percentage), [100, 0]);
+  assert.deepEqual(
+    result.queue.items.map((item) => item.percentage),
+    [100, 0],
+  );
   assert.equal(result.history, null);
   assert.deepEqual(result.errors, [
     { source: "history", message: "Backend returned HTTP 401" },
@@ -172,7 +253,9 @@ test("history pagination requests exactly ten items at the correct offset", asyn
       assert.equal(url.searchParams.get("pageSize"), "10");
       data.history.noofslots = 25;
       data.history.slots = Array.from({ length: 10 }, (_, index) => ({
-        ...data.history.slots[0], nzo_id: String(11 + index), name: `Item ${11 + index}`,
+        ...data.history.slots[0],
+        nzo_id: String(11 + index),
+        name: `Item ${11 + index}`,
       }));
     }
     return Response.json(data);
@@ -195,10 +278,16 @@ test("history page is clamped and refetched when entries disappear", async (t) =
       const start = Number(url.searchParams.get("start"));
       offsets.push(start);
       data.history.noofslots = 12;
-      data.history.slots = start >= 12 ? [] : Array.from({ length: 2 }, (_, index) => ({
-        nzo_id: String(start + index), name: `Item ${start + index}`,
-        status: "Completed", category: "TV", bytes: 100,
-      }));
+      data.history.slots =
+        start >= 12
+          ? []
+          : Array.from({ length: 2 }, (_, index) => ({
+              nzo_id: String(start + index),
+              name: `Item ${start + index}`,
+              status: "Completed",
+              category: "TV",
+              bytes: 100,
+            }));
     }
     return Response.json(data);
   });
@@ -225,8 +314,19 @@ test("empty history has one empty page", async (t) => {
 
 test("invalid history pages are rejected before any backend request", async (t) => {
   setup(t);
-  t.mock.method(global, "fetch", () => { throw new Error("must not fetch"); });
-  for (const historyPage of [0, -1, 1.5, NaN, Infinity, "2", 214748366, Number.MAX_SAFE_INTEGER]) {
+  t.mock.method(global, "fetch", () => {
+    throw new Error("must not fetch");
+  });
+  for (const historyPage of [
+    0,
+    -1,
+    1.5,
+    NaN,
+    Infinity,
+    "2",
+    214748366,
+    Number.MAX_SAFE_INTEGER,
+  ]) {
     await assert.rejects(getDashboard({ historyPage }), RangeError);
   }
   assert.equal(global.fetch.mock.calls.length, 0);
@@ -235,8 +335,12 @@ test("invalid history pages are rejected before any backend request", async (t) 
 test("internal dashboard keeps backend credentials when runtime environment is overwritten", async (t) => {
   setup(t);
   const keys = [
-    "NZBDAV_BACKEND", "NZBDAV_INTERNAL_PORT", "NZBDAV_WEBDAV_URL",
-    "NZBDAV_WEBDAV_USER", "NZBDAV_WEBDAV_PASS", "FRONTEND_BACKEND_API_KEY",
+    "NZBDAV_BACKEND",
+    "NZBDAV_INTERNAL_PORT",
+    "NZBDAV_WEBDAV_URL",
+    "NZBDAV_WEBDAV_USER",
+    "NZBDAV_WEBDAV_PASS",
+    "FRONTEND_BACKEND_API_KEY",
   ];
   const saved = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
   t.after(() => {
@@ -273,8 +377,11 @@ test("history stays limited to ten entries when upstream ignores the SAB limit",
       const start = Number(url.searchParams.get("start"));
       data.history.noofslots = 510;
       data.history.slots = Array.from({ length: 510 - start }, (_, index) => ({
-        nzo_id: String(start + index + 1), name: `Item ${start + index + 1}`,
-        status: "Completed", category: "TV", bytes: 100,
+        nzo_id: String(start + index + 1),
+        name: `Item ${start + index + 1}`,
+        status: "Completed",
+        category: "TV",
+        bytes: 100,
       }));
     }
     return Response.json(data);
@@ -293,15 +400,24 @@ test("history exposes valid timestamps without inventing missing or invalid date
   t.mock.method(global, "fetch", async (url) => {
     const data = fixture(url);
     if (data.history) {
-      data.history.slots = [1793178000, undefined, "invalid", 0, 1e30].map((completed) => ({
-        ...data.history.slots[0], completed,
-      }));
+      data.history.slots = [1793178000, undefined, "invalid", 0, 1e30].map(
+        (completed) => ({
+          ...data.history.slots[0],
+          completed,
+        }),
+      );
     }
     return Response.json(data);
   });
   const result = await getDashboard();
-  assert.equal(result.history.items[0].completedAt, new Date(1793178000 * 1000).toISOString());
-  assert.deepEqual(result.history.items.slice(1).map((item) => item.completedAt), [null, null, null, null]);
+  assert.equal(
+    result.history.items[0].completedAt,
+    new Date(1793178000 * 1000).toISOString(),
+  );
+  assert.deepEqual(
+    result.history.items.slice(1).map((item) => item.completedAt),
+    [null, null, null, null],
+  );
 });
 
 test("internal failed filter is sent before backend pagination and retains filtered total", async (t) => {
@@ -332,10 +448,15 @@ test("external failed filter scans all backend pages before filtering and pagina
       const start = Number(url.searchParams.get("start"));
       offsets.push(start);
       data.history.noofslots = 125;
-      data.history.slots = Array.from({ length: Math.min(100, 125 - start) }, (_, index) => ({
-        nzo_id: String(start + index), name: `Item ${start + index}`, bytes: 100,
-        status: (start + index) % 10 === 0 ? "Failed" : "Completed",
-      }));
+      data.history.slots = Array.from(
+        { length: Math.min(100, 125 - start) },
+        (_, index) => ({
+          nzo_id: String(start + index),
+          name: `Item ${start + index}`,
+          bytes: 100,
+          status: (start + index) % 10 === 0 ? "Failed" : "Completed",
+        }),
+      );
     }
     return Response.json(data);
   });
@@ -363,11 +484,20 @@ test("clear history snapshots all pages before deleting batches without files", 
     }
     readCount++;
     const start = Number(url.searchParams.get("start"));
-    return Response.json({ history: { noofslots: 125,
-      slots: Array.from({ length: Math.min(100, 125 - start) }, (_, index) => ({
-        nzo_id: String(start + index), name: "Test", bytes: 100,
-        status: index % 2 ? "Completed" : "Failed",
-      })) } });
+    return Response.json({
+      history: {
+        noofslots: 125,
+        slots: Array.from(
+          { length: Math.min(100, 125 - start) },
+          (_, index) => ({
+            nzo_id: String(start + index),
+            name: "Test",
+            bytes: 100,
+            status: index % 2 ? "Completed" : "Failed",
+          }),
+        ),
+      },
+    });
   });
   assert.deepEqual(await clearHistory(), { removed: 125 });
   assert.equal(new Set(deleted).size, 125);
@@ -383,9 +513,17 @@ test("external clear history uses comma-separated IDs and excludes file deletion
       assert.equal(options.method, "POST");
       return Response.json({ status: true });
     }
-    return Response.json({ history: { noofslots: 2, slots: ["one", "two"].map((nzo_id) => ({
-      nzo_id, name: "Test", status: "Completed", bytes: 0,
-    })) } });
+    return Response.json({
+      history: {
+        noofslots: 2,
+        slots: ["one", "two"].map((nzo_id) => ({
+          nzo_id,
+          name: "Test",
+          status: "Completed",
+          bytes: 0,
+        })),
+      },
+    });
   });
   assert.deepEqual(await clearHistory(), { removed: 2 });
 });
@@ -400,8 +538,14 @@ test("clear history reports rejected deletion explicitly and releases its lock",
     }
     return Response.json(fixture(url));
   });
-  await assert.rejects(clearHistory(), /0 entries already removed.*unexpected response/);
-  await assert.rejects(clearHistory(), /0 entries already removed.*unexpected response/);
+  await assert.rejects(
+    clearHistory(),
+    /0 entries already removed.*unexpected response/,
+  );
+  await assert.rejects(
+    clearHistory(),
+    /0 entries already removed.*unexpected response/,
+  );
   assert.equal(deletes, 2);
 });
 
@@ -433,13 +577,21 @@ test("clear history reports partial deletion and does not continue after a faile
       if (++batches === 2) throw new Error("private backend URL and key");
       return Response.json({ status: true });
     }
-    return Response.json({ history: { noofslots: 100,
-      slots: Array.from({ length: 100 }, (_, index) => ({
-        nzo_id: String(index), name: "Test", status: "Completed", bytes: 0,
-      })) } });
+    return Response.json({
+      history: {
+        noofslots: 100,
+        slots: Array.from({ length: 100 }, (_, index) => ({
+          nzo_id: String(index),
+          name: "Test",
+          status: "Completed",
+          bytes: 0,
+        })),
+      },
+    });
   });
   await assert.rejects(clearHistory(), {
-    message: "Could not clear history (50 entries already removed): Backend request failed",
+    message:
+      "Could not clear history (50 entries already removed): Backend request failed",
   });
   assert.equal(batches, 2);
 });
@@ -461,5 +613,7 @@ test("internal failed filter reports incompatible backend instead of showing com
   t.mock.method(global, "fetch", async (url) => Response.json(fixture(url)));
   const result = await getDashboard({ failedOnly: true });
   assert.equal(result.history, null);
-  assert.deepEqual(result.errors, [{ source: "history", message: "Backend returned an unexpected response" }]);
+  assert.deepEqual(result.errors, [
+    { source: "history", message: "Backend returned an unexpected response" },
+  ]);
 });

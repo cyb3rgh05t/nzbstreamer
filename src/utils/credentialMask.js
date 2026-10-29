@@ -1,15 +1,17 @@
 // Zero-width space sentinel — visually invisible, never a real env value.
-const CREDENTIAL_MASK_SENTINEL = '​__MASKED_CREDENTIAL__​';
+const CREDENTIAL_MASK_SENTINEL = "​__MASKED_CREDENTIAL__​";
 
 const SENSITIVE_KEYS = new Set([
-  'INDEXER_MANAGER_API_KEY',
-  'NZBDAV_API_KEY',
-  'NZBDAV_WEBDAV_PASS',
-  'NZB_TRIAGE_NNTP_PASS',
-  'EASYNEWS_PASSWORD',
-  'TMDB_API_KEY',
-  'TVDB_API_KEY',
-  'SPECIAL_PROVIDER_SECRET',
+  "INDEXER_MANAGER_API_KEY",
+  "NZBDAV_API_KEY",
+  "NZBDAV_WEBDAV_PASS",
+  "NZB_TRIAGE_NNTP_PASS",
+  "EASYNEWS_PASSWORD",
+  "TMDB_API_KEY",
+  "TVDB_API_KEY",
+  "SPECIAL_PROVIDER_SECRET",
+  "HEALTH_TELEGRAM_BOT_TOKEN",
+  "HEALTH_DISCORD_WEBHOOK_URL",
 ]);
 
 const SENSITIVE_KEY_PATTERNS = [/^NEWZNAB_API_KEY_\d+$/];
@@ -17,7 +19,7 @@ const SENSITIVE_KEY_PATTERNS = [/^NEWZNAB_API_KEY_\d+$/];
 // Indexer proxy URLs (manager + per-row). Unlike API keys these are masked
 // CONDITIONALLY — only when the URL embeds credentials (user:pass@host) — so a
 // plain proxy like socks5://gluetun:8388 stays visible/editable in the admin UI.
-const PROXY_KEYS = new Set(['INDEXER_MANAGER_PROXY']);
+const PROXY_KEYS = new Set(["INDEXER_MANAGER_PROXY"]);
 const PROXY_KEY_PATTERNS = [/^NEWZNAB_PROXY_\d+$/];
 
 function isProxyKey(key) {
@@ -27,7 +29,7 @@ function isProxyKey(key) {
 
 // A proxy URL carries credentials when it has a userinfo segment before the host.
 function proxyValueHasCredentials(value) {
-  return /\/\/[^/@]+@/.test(String(value || ''));
+  return /\/\/[^/@]+@/.test(String(value || ""));
 }
 
 function isSensitiveKey(key) {
@@ -54,11 +56,11 @@ function maskSensitiveValues(values) {
 }
 
 function unsentinelValues(values) {
-  if (!values || typeof values !== 'object') return values;
+  if (!values || typeof values !== "object") return values;
   const resolved = { ...values };
   Object.keys(resolved).forEach((key) => {
     if (resolved[key] === CREDENTIAL_MASK_SENTINEL) {
-      resolved[key] = process.env[key] || '';
+      resolved[key] = process.env[key] || "";
     }
   });
   return resolved;

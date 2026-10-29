@@ -17,7 +17,7 @@ Nach der Anmeldung startet die Admin-Oberflaeche im Dashboard. Die Reihenfolge i
 1. Ueberschrift, Updated-Badge neben Refresh und eventuelle Fehlermeldungen.
 2. Sechs Kennzahlen: Backend, Queued downloads, History items, Active reads,
    Data served / minute und Catalogue files.
-3. Provider usage.
+3. Providers und Indexers / Newznab mit Verbindungsstatus; Provider-Verbrauch darunter.
 4. NZBStreamer caches.
 5. Download queue.
 6. Recent history mit Seitenwechsel.
@@ -73,16 +73,17 @@ Der Browser spricht fuer diese Ansicht nicht direkt mit der Backend-API.
 NZBStreamer sammelt und reduziert die Antworten und liefert nur die fuer das
 Dashboard vorgesehenen Felder zurueck.
 
-| Bereich | Quelle | Anfrage bzw. Herkunft |
-|---|---|---|
-| Backend-Modus | NZBStreamer | Zustand des eingebauten Backend-Managers |
-| Queue und Queue-Anzahl | NZBDav/SAB-API | `api?mode=queue&output=json&start=0&limit=20` |
-| History und History-Anzahl | NZBDav/SAB-API | `api?mode=history&output=json&start=...&limit=10&pageSize=10` |
-| Active reads | Eingebautes NZBDavEx | `api/get-overview-stats?window=24h`, Feld `tiles.activeReads` |
-| Data served / minute | Eingebautes NZBDavEx | Gleiche Overview-Antwort, Feld `tiles.bytesServedPerMinute` |
+| Bereich                               | Quelle               | Anfrage bzw. Herkunft                                                             |
+| ------------------------------------- | -------------------- | --------------------------------------------------------------------------------- |
+| Backend-Modus                         | NZBStreamer          | Zustand des eingebauten Backend-Managers                                          |
+| Queue und Queue-Anzahl                | NZBDav/SAB-API       | `api?mode=queue&output=json&start=0&limit=20`                                     |
+| History und History-Anzahl            | NZBDav/SAB-API       | `api?mode=history&output=json&start=...&limit=10&pageSize=10`                     |
+| Active reads                          | Eingebautes NZBDavEx | `api/get-overview-stats?window=24h`, Feld `tiles.activeReads`                     |
+| Data served / minute                  | Eingebautes NZBDavEx | Gleiche Overview-Antwort, Feld `tiles.bytesServedPerMinute`                       |
 | Catalogue files und virtuelle Groesse | Eingebautes NZBDavEx | Gleiche Overview-Antwort, Felder `catalogue.fileCount` und `catalogue.totalBytes` |
-| Provider usage | Eingebautes NZBDavEx | `api/get-provider-usage` |
-| Alle drei Cache-Kacheln | NZBStreamer selbst | Lokale Cache-Module, keine Backend-Abfrage |
+| Provider usage                        | Eingebautes NZBDavEx | `api/get-provider-usage`                                                          |
+| Provider- und Indexer-Status          | Hintergrundmonitor   | NNTP-Anmeldung, Easynews-Zugangstest und authentifizierte Indexer-API-Pruefung    |
+| Alle drei Cache-Kacheln               | NZBStreamer selbst   | Lokale Cache-Module, keine Backend-Abfrage                                        |
 
 ### Internes und externes Backend
 
@@ -99,6 +100,44 @@ ein entsprechender Hinweis. Die lokalen NZBStreamer-Caches bleiben verfuegbar.
 
 Auch wenn ein externer Server zufaellig kompatible Erweiterungen anbietet,
 nutzt das aktuelle Dashboard sie nicht automatisch.
+
+## Service-Monitoring und Benachrichtigungen
+
+Unter **Addon > Notifications** lassen sich Telegram und Discord einrichten:
+
+- Telegram: Bot bei BotFather erstellen, Bot Token und Chat ID eintragen. Im
+  privaten Chat den Bot zuerst starten; fuer Gruppen muss der Bot Mitglied sein.
+- Discord: Im gewuenschten Kanal einen Webhook erstellen und dessen URL eintragen.
+- Mit **Test Telegram** bzw. **Test Discord** eine Testnachricht senden und die
+  Einstellungen speichern. Beide Kanaele sind unabhaengig und optional.
+- **Enable service monitoring** schaltet die Hintergrundpruefung an oder aus.
+  Standard ist an. Das Intervall betraegt standardmaessig fuenf Minuten und kann
+  zwischen einer Minute und 24 Stunden eingestellt werden.
+
+Geprueft werden der konfigurierte NNTP-Provider, aktiviertes Easynews, der aktive
+Indexer-Manager und jeder aktivierte direkte Newznab-Indexer. Pro Newznab-Pruefung
+wird eine Suchanfrage mit maximal einem Ergebnis angefordert; sie kann auf das
+API-Kontingent angerechnet werden. Es werden keine NZBs heruntergeladen.
+Die NNTP-Pruefung benoetigt kurzzeitig eine zusaetzliche Verbindung.
+Provider, die nur in einem externen NZBDav konfiguriert sind, werden nicht erfasst.
+Ein erreichbarer Manager garantiert nicht, dass alle dahinterliegenden Indexer
+funktionieren; fuer deren Einzelstatus muessen sie als direkte Newznab-Indexer
+konfiguriert sein.
+
+Das Dashboard zeigt **Online** oder **Problem**, eine bereinigte Fehlerbeschreibung
+und die Uhrzeit der letzten Pruefung. Der Dashboard-Refresh liest nur diesen
+gespeicherten Status und erzeugt keine weiteren Indexer-Suchen. Auch ohne
+konfiguriertes NZBDav-Backend bleiben diese Statusdaten verfuegbar.
+
+Nach zwei aufeinanderfolgenden Fehlpruefungen wird einmalig eine Ausfallmeldung
+versendet. Sobald die Verbindung wieder funktioniert, folgt eine Entwarnung.
+Kurze Einzelstoerungen und dauerhaft unveraenderte Fehler erzeugen keine
+wiederholten Meldungen. Bei fehlgeschlagener Zustellung wird im naechsten
+Pruefintervall erneut versucht; erfolgreiche Kanaele werden nicht erneut bedient.
+Die Pruefung laeuft auch ohne geoeffnetes Dashboard. Nach einem Prozessneustart
+beginnen Status und Fehlerzaehler neu; es gibt keine persistente Alarmhistorie.
+Aenderungen an Einstellungen greifen spaetestens im naechsten Pruefintervall.
+Bot-Token und Webhook-URL werden wie API-Schluessel maskiert.
 
 ## 3. Die sechs Kennzahlen
 
@@ -211,13 +250,13 @@ nicht automatisch 3,8 TiB lokalen Speicherverbrauch.
 
 Pro konfiguriertem Usenet-Provider zeigt das Dashboard:
 
-| Anzeige | Bedeutung |
-|---|---|
-| Ueberschrift | Nickname, falls vorhanden; sonst Provider-Host |
-| Datenmenge | Vom Backend erfasste verbrauchte Provider-Bytes |
-| `Limit: ...` | Im Backend konfiguriertes Byte-Limit |
-| `No byte limit` | Kein positives Byte-Limit im Backend konfiguriert |
-| Fehlerhervorhebung | Backend meldet `overLimit` |
+| Anzeige            | Bedeutung                                         |
+| ------------------ | ------------------------------------------------- |
+| Ueberschrift       | Nickname, falls vorhanden; sonst Provider-Host    |
+| Datenmenge         | Vom Backend erfasste verbrauchte Provider-Bytes   |
+| `Limit: ...`       | Im Backend konfiguriertes Byte-Limit              |
+| `No byte limit`    | Kein positives Byte-Limit im Backend konfiguriert |
+| Fehlerhervorhebung | Backend meldet `overLimit`                        |
 
 Der Verbrauch stammt aus dem Provider-Byte-Tracker. Der angezeigte Wert
 beruecksichtigt den im Backend verwalteten Zaehlerstand und einen gegebenenfalls
@@ -343,12 +382,12 @@ keine zusaetzliche serverseitige Abschneidung der Antwort. Bei Backends, die
 mehr Slots zurueckliefern, ist dies daher keine harte Anzeigeobergrenze.
 Die Kennzahl oben verwendet unabhaengig davon die gemeldete Gesamtzahl.
 
-| Zustand | Anzeige |
-|---|---|
-| Erfolgreiche Abfrage, keine Auftraege | `No items.` |
-| Queue-Quelle nicht verfuegbar | `Data unavailable. See errors above.` |
-| Wartender Auftrag | Name, `Queued`, Kategorie, Backend-Fortschritt |
-| Laufende Verarbeitung | Name, `Downloading`, Kategorie, Fortschrittsbalken |
+| Zustand                               | Anzeige                                            |
+| ------------------------------------- | -------------------------------------------------- |
+| Erfolgreiche Abfrage, keine Auftraege | `No items.`                                        |
+| Queue-Quelle nicht verfuegbar         | `Data unavailable. See errors above.`              |
+| Wartender Auftrag                     | Name, `Queued`, Kategorie, Backend-Fortschritt     |
+| Laufende Verarbeitung                 | Name, `Downloading`, Kategorie, Fortschrittsbalken |
 
 Nicht angezeigt werden beispielsweise Queue-Steuerung, Pausieren, Loeschen,
 Restzeit, individuelle Providerdetails oder eine genaue Transfergeschwindigkeit
@@ -452,13 +491,13 @@ Die GET-Abfrage des Dashboards loescht niemals History.
 
 ### Null ist nicht dasselbe wie nicht verfuegbar
 
-| Anzeige | Bedeutung |
-|---|---|
-| `0` | Die Quelle hat erfolgreich einen Nullwert geliefert |
-| `No items.` | Erfolgreiche Listenabfrage ohne Eintraege |
-| `Unavailable` | Kein verwendbarer Wert fuer diese Kennzahl |
-| `No providers configured.` | Erfolgreiche interne Provider-Abfrage ohne Provider |
-| Fehlermeldung mit Quellenname | Eine bestimmte Teilabfrage ist fehlgeschlagen |
+| Anzeige                       | Bedeutung                                           |
+| ----------------------------- | --------------------------------------------------- |
+| `0`                           | Die Quelle hat erfolgreich einen Nullwert geliefert |
+| `No items.`                   | Erfolgreiche Listenabfrage ohne Eintraege           |
+| `Unavailable`                 | Kein verwendbarer Wert fuer diese Kennzahl          |
+| `No providers configured.`    | Erfolgreiche interne Provider-Abfrage ohne Provider |
+| Fehlermeldung mit Quellenname | Eine bestimmte Teilabfrage ist fehlgeschlagen       |
 
 Die Quellen werden unabhaengig ausgewertet. Ein Fehler bei `providers` macht
 eine erfolgreiche Queue nicht unbrauchbar. Lokale Cache-Statistiken koennen
@@ -498,27 +537,27 @@ gegebenenfalls unkenntlich machen.
 
 Groessen werden binaer formatiert:
 
-| Einheit | Bytes |
-|---|---:|
-| KiB | 1.024 |
-| MiB | 1.048.576 |
-| GiB | 1.073.741.824 |
-| TiB | 1.099.511.627.776 |
+| Einheit |             Bytes |
+| ------- | ----------------: |
+| KiB     |             1.024 |
+| MiB     |         1.048.576 |
+| GiB     |     1.073.741.824 |
+| TiB     | 1.099.511.627.776 |
 
 Die Darstellung verwendet maximal eine Nachkommastelle und die Spracheinstellung
 des Browsers. Provider-Portale koennen stattdessen dezimale GB/TB anzeigen;
 dadurch unterscheiden sich Zahlen auch bei derselben Byte-Menge.
 
-| Beobachtung | Moegliche normale Erklaerung |
-|---|---|
-| Film laeuft, Queue ist leer | Auftrag bereits verarbeitet; Wiedergabe liest virtuelle Datei |
-| Film laeuft, Active reads ist 0 | Player spielt Puffer ab; Messung ist zeitversetzt |
-| Active reads 0, Daten/min noch positiv | Auslieferung der letzten Minute ist noch im rollenden Fenster |
+| Beobachtung                                     | Moegliche normale Erklaerung                                                           |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Film laeuft, Queue ist leer                     | Auftrag bereits verarbeitet; Wiedergabe liest virtuelle Datei                          |
+| Film laeuft, Active reads ist 0                 | Player spielt Puffer ab; Messung ist zeitversetzt                                      |
+| Active reads 0, Daten/min noch positiv          | Auslieferung der letzten Minute ist noch im rollenden Fenster                          |
 | History waechst, Catalogue files waechst anders | Auftraege und Dateien sind unterschiedliche Einheiten; auch Fehler zaehlen zur History |
-| Mehrere TiB im Katalog, kleiner lokaler Cache | Virtueller Katalog und lokale NZB-Payloads sind unterschiedliche Dinge |
-| Provider-Verbrauch steigt bei Queue 0 | Streaming kann neue Usenet-Daten anfordern |
-| ready + pending kleiner als Cache-Eintraege | Weitere Zustaende wie failed sind nicht separat in der Kachel dargestellt |
-| Providerdaten fehlen im externen Modus | Erweiterte Endpunkte werden nur intern abgefragt |
+| Mehrere TiB im Katalog, kleiner lokaler Cache   | Virtueller Katalog und lokale NZB-Payloads sind unterschiedliche Dinge                 |
+| Provider-Verbrauch steigt bei Queue 0           | Streaming kann neue Usenet-Daten anfordern                                             |
+| ready + pending kleiner als Cache-Eintraege     | Weitere Zustaende wie failed sind nicht separat in der Kachel dargestellt              |
+| Providerdaten fehlen im externen Modus          | Erweiterte Endpunkte werden nur intern abgefragt                                       |
 
 ## 10. Was derzeit nicht Teil des Dashboards ist
 

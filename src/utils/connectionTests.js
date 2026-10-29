@@ -1,41 +1,54 @@
-const axios = require('axios');
-const FormData = require('form-data');
-const fs = require('fs');
-const path = require('path');
-const { buildProxyAgents } = require('./proxyAgent');
+const axios = require("axios");
+const FormData = require("form-data");
+const fs = require("fs");
+const path = require("path");
+const { parseStringPromise } = require("xml2js");
+const { buildProxyAgents } = require("./proxyAgent");
 const {
   getNewznabConfigsFromValues,
   filterUsableConfigs,
   searchNewznabIndexers,
   validateNewznabSearch,
-} = require('../services/newznab');
-const { extractNewznabError } = require('../services/indexer');
+} = require("../services/newznab");
+const { extractNewznabError } = require("../services/indexer");
 
 let NNTPClientCtor = null;
 try {
-  const nntpModule = require('nntp/lib/nntp');
-  NNTPClientCtor = typeof nntpModule === 'function' ? nntpModule : nntpModule?.NNTP || null;
+  const nntpModule = require("nntp/lib/nntp");
+  NNTPClientCtor =
+    typeof nntpModule === "function" ? nntpModule : nntpModule?.NNTP || null;
 } catch (error) {
   NNTPClientCtor = null;
 }
 
 function sanitizeBaseUrl(input) {
-  if (!input) return '';
-  return String(input).trim().replace(/\/+$/, '');
+  if (!input) return "";
+  return String(input).trim().replace(/\/+$/, "");
 }
 
 function parseBoolean(value) {
-  if (typeof value === 'boolean') return value;
+  if (typeof value === "boolean") return value;
   if (value === null || value === undefined) return false;
   const normalized = String(value).trim().toLowerCase();
-  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+  return (
+    normalized === "1" ||
+    normalized === "true" ||
+    normalized === "yes" ||
+    normalized === "on"
+  );
 }
 
-const NEWZNAB_DEBUG_ENABLED = (parseBoolean(process.env.DEBUG_NEWZNAB_TEST) || parseBoolean(process.env.DEBUG_NEWZNAB_SEARCH))
-  && !parseBoolean(process.env.DISABLE_NEWZNAB_TEST_LOGS);
+const NEWZNAB_DEBUG_ENABLED =
+  (parseBoolean(process.env.DEBUG_NEWZNAB_TEST) ||
+    parseBoolean(process.env.DEBUG_NEWZNAB_SEARCH)) &&
+  !parseBoolean(process.env.DISABLE_NEWZNAB_TEST_LOGS);
 
-const TEST_NZB_FILE_NAME = 'Test_Passed_ignore_failure.nzb';
-const TEST_NZB_FILE_PATH = path.resolve(__dirname, '../../assets', TEST_NZB_FILE_NAME);
+const TEST_NZB_FILE_NAME = "Test_Passed_ignore_failure.nzb";
+const TEST_NZB_FILE_PATH = path.resolve(
+  __dirname,
+  "../../assets",
+  TEST_NZB_FILE_NAME,
+);
 let cachedDiagnosticNzbBuffer = null;
 
 async function getDiagnosticNzbBuffer() {
@@ -44,33 +57,33 @@ async function getDiagnosticNzbBuffer() {
     cachedDiagnosticNzbBuffer = await fs.promises.readFile(TEST_NZB_FILE_PATH);
     return cachedDiagnosticNzbBuffer;
   } catch (error) {
-    throw new Error('Diagnostic NZB asset missing or unreadable');
+    throw new Error("Diagnostic NZB asset missing or unreadable");
   }
 }
 
 function resolveNzbdavTestCategory(values) {
-  const override = (values?.NZBDAV_CATEGORY || '').trim();
+  const override = (values?.NZBDAV_CATEGORY || "").trim();
   if (override) return `${override}_MOVIE`;
-  const movieCategory = (values?.NZBDAV_CATEGORY_MOVIES || '').trim();
+  const movieCategory = (values?.NZBDAV_CATEGORY_MOVIES || "").trim();
   if (movieCategory) return movieCategory;
-  const defaultCategory = (values?.NZBDAV_CATEGORY_DEFAULT || '').trim();
+  const defaultCategory = (values?.NZBDAV_CATEGORY_DEFAULT || "").trim();
   if (defaultCategory) return defaultCategory;
-  return 'Movies';
+  return "Movies";
 }
 
 async function verifyNzbdavDiagnosticUpload({ baseUrl, apiKey, category }) {
   const nzbBuffer = await getDiagnosticNzbBuffer();
   const form = new FormData();
-  form.append('nzbfile', nzbBuffer, {
+  form.append("nzbfile", nzbBuffer, {
     filename: `UsenetStreamer_Diagnostic_${Date.now()}.nzb`,
-    contentType: 'application/x-nzb+xml',
+    contentType: "application/x-nzb+xml",
   });
 
   const params = {
-    mode: 'addfile',
-    output: 'json',
+    mode: "addfile",
+    output: "json",
     apikey: apiKey,
-    nzbname: 'UsenetStreamer Diagnostic NZB',
+    nzbname: "UsenetStreamer Diagnostic NZB",
   };
   if (category) params.cat = category;
 
@@ -78,7 +91,7 @@ async function verifyNzbdavDiagnosticUpload({ baseUrl, apiKey, category }) {
     ...form.getHeaders(),
   };
   if (apiKey) {
-    headers['x-api-key'] = apiKey;
+    headers["x-api-key"] = apiKey;
   }
 
   const response = await axios.post(`${baseUrl}/api`, form, {
@@ -91,26 +104,28 @@ async function verifyNzbdavDiagnosticUpload({ baseUrl, apiKey, category }) {
   });
 
   if (response.status === 401 || response.status === 403) {
-    throw new Error('NZBDav rejected API key during diagnostic upload');
+    throw new Error("NZBDav rejected API key during diagnostic upload");
   }
   if (response.status >= 500) {
-    throw new Error(`NZBDav returned status ${response.status} during diagnostic upload`);
+    throw new Error(
+      `NZBDav returned status ${response.status} during diagnostic upload`,
+    );
   }
 
   const payload = response.data || {};
   if (payload?.status) {
-    return 'diagnostic NZB accepted';
+    return "diagnostic NZB accepted";
   }
 
-  const errorText = (payload?.error || payload?.message || '').toString();
+  const errorText = (payload?.error || payload?.message || "").toString();
   if (errorText) {
     const lowered = errorText.toLowerCase();
-    if (lowered.includes('unsupported') || lowered.includes('archive')) {
+    if (lowered.includes("unsupported") || lowered.includes("archive")) {
       return errorText;
     }
   }
 
-  throw new Error(errorText || 'NZBDav rejected diagnostic NZB upload');
+  throw new Error(errorText || "NZBDav rejected diagnostic NZB upload");
 }
 
 function logNewznabDebug(message, context = null) {
@@ -126,32 +141,39 @@ function formatVersionLabel(prefix, version) {
   if (!version) return prefix;
   const normalized = String(version).trim();
   if (!normalized) return prefix;
-  return `${prefix} (v${normalized.replace(/^v/i, '')})`;
+  return `${prefix} (v${normalized.replace(/^v/i, "")})`;
 }
 
-async function testIndexerConnection(values) {
-  const managerType = String(values?.INDEXER_MANAGER || 'prowlarr').trim().toLowerCase() || 'prowlarr';
+async function testIndexerConnection(values, { strict = false } = {}) {
+  const managerType =
+    String(values?.INDEXER_MANAGER || "prowlarr")
+      .trim()
+      .toLowerCase() || "prowlarr";
   const baseUrl = sanitizeBaseUrl(values?.INDEXER_MANAGER_URL);
-  if (!baseUrl) throw new Error('Indexer URL is required');
-  const apiKey = (values?.INDEXER_MANAGER_API_KEY || '').trim();
+  if (!baseUrl) throw new Error("Indexer URL is required");
+  const apiKey = (values?.INDEXER_MANAGER_API_KEY || "").trim();
   const timeout = 8000;
 
-  if (managerType === 'prowlarr') {
-    if (!apiKey) throw new Error('API key is required for Prowlarr');
+  if (managerType === "prowlarr") {
+    if (!apiKey) throw new Error("API key is required for Prowlarr");
     const statusUrl = `${baseUrl}/api/v1/system/status`;
     const response = await axios.get(statusUrl, {
-      headers: { 'X-Api-Key': apiKey },
+      headers: { "X-Api-Key": apiKey },
       timeout,
       validateStatus: () => true,
       proxy: false,
       ...(buildProxyAgents(values?.INDEXER_MANAGER_PROXY, statusUrl) || {}),
     });
     if (response.status === 200) {
-      const version = response.data?.version || response.data?.appVersion || null;
-      return formatVersionLabel('Connected to Prowlarr', version);
+      const version =
+        response.data?.version || response.data?.appVersion || null;
+      if (strict && (typeof version !== "string" || !version.trim())) {
+        throw new Error("Unexpected response from Prowlarr");
+      }
+      return formatVersionLabel("Connected to Prowlarr", version);
     }
     if (response.status === 401 || response.status === 403) {
-      throw new Error('Unauthorized: check Prowlarr API key');
+      throw new Error("Unauthorized: check Prowlarr API key");
     }
     throw new Error(`Unexpected response ${response.status} from Prowlarr`);
   }
@@ -164,17 +186,17 @@ async function testIndexerConnection(values) {
   // while still returning HTTP 200.
   const hydraUrl = `${baseUrl}/api`;
   const capsResponse = await axios.get(hydraUrl, {
-    params: { t: 'caps', o: 'json', ...(apiKey ? { apikey: apiKey } : {}) },
+    params: { t: "caps", o: "json", ...(apiKey ? { apikey: apiKey } : {}) },
     timeout,
     validateStatus: () => true,
     proxy: false,
     ...(buildProxyAgents(values?.INDEXER_MANAGER_PROXY, hydraUrl) || {}),
   });
   if (capsResponse.status === 401 || capsResponse.status === 403) {
-    throw new Error('Unauthorized: check NZBHydra API key');
+    throw new Error("Unauthorized: check NZBHydra API key");
   }
   if (capsResponse.status === 400) {
-    throw new Error('Bad request to NZBHydra - verify URL format and API key');
+    throw new Error("Bad request to NZBHydra - verify URL format and API key");
   }
   if (capsResponse.status !== 200) {
     throw new Error(`Unexpected response ${capsResponse.status} from NZBHydra`);
@@ -182,49 +204,75 @@ async function testIndexerConnection(values) {
   // Some NZBHydra setups validate the key even on caps (HTTP 200 + a newznab
   // error body like {code:"100", description:"Wrong api key"}). Catch that here.
   const capsError = extractNewznabError(capsResponse.data);
-  if (capsError && /^(100|101|102)$/.test(String(capsError.code || ''))) {
-    throw new Error('Unauthorized: check NZBHydra API key');
+  if (capsError && /^(100|101|102)$/.test(String(capsError.code || ""))) {
+    throw new Error("Unauthorized: check NZBHydra API key");
   }
-  const version = capsResponse.data?.version
-    || capsResponse.data?.server?.version
-    || capsResponse.data?.['@attributes']?.version
-    || null;
+  const version =
+    capsResponse.data?.version ||
+    capsResponse.data?.server?.version ||
+    capsResponse.data?.["@attributes"]?.version ||
+    null;
 
   // Validate the API key. Only fail on a DEFINITIVE auth rejection — a wrong key
   // is rejected fast (before any indexer search), so a slow or unreachable
   // validation search must not block an otherwise-valid setup.
   try {
     const searchResponse = await axios.get(hydraUrl, {
-      params: { t: 'search', q: 'test', limit: 1, o: 'json', ...(apiKey ? { apikey: apiKey } : {}) },
+      params: {
+        t: "search",
+        q: "test",
+        limit: 1,
+        o: "json",
+        ...(apiKey ? { apikey: apiKey } : {}),
+      },
       timeout,
       validateStatus: () => true,
       proxy: false,
       ...(buildProxyAgents(values?.INDEXER_MANAGER_PROXY, hydraUrl) || {}),
     });
     if (searchResponse.status === 401 || searchResponse.status === 403) {
-      throw new Error('Unauthorized: check NZBHydra API key');
+      throw new Error("Unauthorized: check NZBHydra API key");
     }
     const apiError = extractNewznabError(searchResponse.data);
-    if (apiError && /^(100|101|102)$/.test(String(apiError.code || ''))) {
-      throw new Error('Unauthorized: check NZBHydra API key');
+    if (apiError && /^(100|101|102)$/.test(String(apiError.code || ""))) {
+      throw new Error("Unauthorized: check NZBHydra API key");
+    }
+    if (strict) {
+      if (searchResponse.status !== 200 || apiError)
+        throw new Error(
+          `API validation failed (HTTP ${searchResponse.status})`,
+        );
+      const data =
+        typeof searchResponse.data === "string"
+          ? await parseStringPromise(searchResponse.data, {
+              explicitArray: false,
+            })
+          : searchResponse.data;
+      if (!data?.channel && !data?.rss?.channel)
+        throw new Error("Unexpected search response from NZBHydra");
     }
   } catch (err) {
-    if (/Unauthorized/i.test(err?.message || '')) throw err;
+    if (strict || /Unauthorized/i.test(err?.message || "")) throw err;
     // transient/network/timeout during validation — fall through to caps success
   }
-  return formatVersionLabel('Connected to NZBHydra', version);
+  return formatVersionLabel("Connected to NZBHydra", version);
 }
 
 async function testNzbdavConnection(values) {
-  const baseUrl = sanitizeBaseUrl(values?.NZBDAV_URL || values?.NZBDAV_WEBDAV_URL);
-  if (!baseUrl) throw new Error('NZBDav URL is required');
-  const apiKey = (values?.NZBDAV_API_KEY || '').trim();
-  if (!apiKey) throw new Error('NZBDav API key is required');
-  const webdavUrl = sanitizeBaseUrl(values?.NZBDAV_WEBDAV_URL || values?.NZBDAV_URL);
-  const webdavUser = (values?.NZBDAV_WEBDAV_USER || '').trim();
-  const webdavPass = (values?.NZBDAV_WEBDAV_PASS || '').trim();
-  if (!webdavUrl) throw new Error('NZBDav WebDAV URL is required');
-  if (!webdavUser || !webdavPass) throw new Error('NZBDav WebDAV username/password are required');
+  const baseUrl = sanitizeBaseUrl(
+    values?.NZBDAV_URL || values?.NZBDAV_WEBDAV_URL,
+  );
+  if (!baseUrl) throw new Error("NZBDav URL is required");
+  const apiKey = (values?.NZBDAV_API_KEY || "").trim();
+  if (!apiKey) throw new Error("NZBDav API key is required");
+  const webdavUrl = sanitizeBaseUrl(
+    values?.NZBDAV_WEBDAV_URL || values?.NZBDAV_URL,
+  );
+  const webdavUser = (values?.NZBDAV_WEBDAV_USER || "").trim();
+  const webdavPass = (values?.NZBDAV_WEBDAV_PASS || "").trim();
+  if (!webdavUrl) throw new Error("NZBDav WebDAV URL is required");
+  if (!webdavUser || !webdavPass)
+    throw new Error("NZBDav WebDAV username/password are required");
   const timeout = 8000;
 
   try {
@@ -236,14 +284,14 @@ async function testNzbdavConnection(values) {
     });
 
     const webdavResponse = await axios.request({
-      method: 'PROPFIND',
+      method: "PROPFIND",
       url: `${webdavUrl}/`,
       auth: {
         username: webdavUser,
         password: webdavPass,
       },
       headers: {
-        'Depth': '0',
+        Depth: "0",
       },
       timeout,
       maxRedirects: 0,
@@ -251,19 +299,23 @@ async function testNzbdavConnection(values) {
     });
 
     if (webdavResponse.status === 401 || webdavResponse.status === 403) {
-      throw new Error('WebDAV authentication failed: check username/password');
+      throw new Error("WebDAV authentication failed: check username/password");
     }
     if (webdavResponse.status >= 400) {
-      throw new Error(`WebDAV endpoint returned status ${webdavResponse.status}`);
+      throw new Error(
+        `WebDAV endpoint returned status ${webdavResponse.status}`,
+      );
     }
     // PROPFIND should return 207 Multi-Status for valid WebDAV; anything else is suspicious
     if (webdavResponse.status !== 207 && webdavResponse.status !== 200) {
-      throw new Error(`Unexpected WebDAV response status ${webdavResponse.status} (expected 207)`);
+      throw new Error(
+        `Unexpected WebDAV response status ${webdavResponse.status} (expected 207)`,
+      );
     }
 
     const diagnosticMessage = diagnosticNote
       ? `Diagnostic NZB upload verified (${diagnosticNote})`
-      : 'Diagnostic NZB upload verified';
+      : "Diagnostic NZB upload verified";
 
     return `WebDAV reachable; ${diagnosticMessage}`;
   } catch (error) {
@@ -272,14 +324,15 @@ async function testNzbdavConnection(values) {
 }
 
 async function testUsenetConnection(values) {
-  if (!NNTPClientCtor) throw new Error('NNTP client library unavailable on server');
-  const host = (values?.NZB_TRIAGE_NNTP_HOST || '').trim();
-  if (!host) throw new Error('Usenet provider host is required');
+  if (!NNTPClientCtor)
+    throw new Error("NNTP client library unavailable on server");
+  const host = (values?.NZB_TRIAGE_NNTP_HOST || "").trim();
+  if (!host) throw new Error("Usenet provider host is required");
   const portValue = Number(values?.NZB_TRIAGE_NNTP_PORT);
   const port = Number.isFinite(portValue) && portValue > 0 ? portValue : 119;
   const useTLS = parseBoolean(values?.NZB_TRIAGE_NNTP_TLS);
-  const user = (values?.NZB_TRIAGE_NNTP_USER || '').trim();
-  const pass = (values?.NZB_TRIAGE_NNTP_PASS || '').trim();
+  const user = (values?.NZB_TRIAGE_NNTP_USER || "").trim();
+  const pass = (values?.NZB_TRIAGE_NNTP_PASS || "").trim();
   const timeoutMs = 8000;
 
   return new Promise((resolve, reject) => {
@@ -289,12 +342,12 @@ async function testUsenetConnection(values) {
     let streamRef = null;
 
     const cleanup = () => {
-      if (streamRef && typeof streamRef.removeListener === 'function') {
-        streamRef.removeListener('error', onClientError);
+      if (streamRef && typeof streamRef.removeListener === "function") {
+        streamRef.removeListener("error", onClientError);
       }
-      client.removeListener('error', onClientError);
-      client.removeListener('close', onClientClose);
-      client.removeListener('ready', onClientReady);
+      client.removeListener("error", onClientError);
+      client.removeListener("close", onClientClose);
+      client.removeListener("ready", onClientReady);
     };
 
     const finalize = (err, message) => {
@@ -303,13 +356,17 @@ async function testUsenetConnection(values) {
       clearTimeout(timer);
       cleanup();
       try {
-        if (reachedReady && typeof client.quit === 'function') {
+        if (reachedReady && typeof client.quit === "function") {
           client.quit(() => client.end());
-        } else if (typeof client.end === 'function') {
+        } else if (typeof client.end === "function") {
           client.end();
         }
       } catch (_) {
-        try { client.end(); } catch (__) { /* noop */ }
+        try {
+          client.end();
+        } catch (__) {
+          /* noop */
+        }
       }
       if (err) reject(err);
       else resolve(message);
@@ -317,24 +374,25 @@ async function testUsenetConnection(values) {
 
     const onClientReady = () => {
       reachedReady = true;
-      finalize(null, 'Connected to Usenet provider successfully');
+      finalize(null, "Connected to Usenet provider successfully");
     };
 
     const onClientError = (err) => {
-      finalize(new Error(err?.message || 'NNTP error'));
+      finalize(new Error(err?.message || "NNTP error"));
     };
 
     const onClientClose = () => {
-      if (!settled) finalize(new Error('Connection closed before verification'));
+      if (!settled)
+        finalize(new Error("Connection closed before verification"));
     };
 
     const timer = setTimeout(() => {
-      finalize(new Error('Connection timed out'));
+      finalize(new Error("Connection timed out"));
     }, timeoutMs);
 
-    client.once('ready', onClientReady);
-    client.once('error', onClientError);
-    client.once('close', onClientClose);
+    client.once("ready", onClientReady);
+    client.once("error", onClientError);
+    client.once("close", onClientClose);
 
     try {
       streamRef = client.connect({
@@ -345,8 +403,8 @@ async function testUsenetConnection(values) {
         password: pass || undefined,
         connTimeout: timeoutMs,
       });
-      if (streamRef && typeof streamRef.on === 'function') {
-        streamRef.on('error', onClientError);
+      if (streamRef && typeof streamRef.on === "function") {
+        streamRef.on("error", onClientError);
       }
     } catch (error) {
       finalize(error);
@@ -357,35 +415,42 @@ async function testUsenetConnection(values) {
 async function testNewznabConnection(values) {
   const configs = filterUsableConfigs(
     getNewznabConfigsFromValues(values, { includeEmpty: true }),
-    { requireEnabled: true, requireApiKey: true }
+    { requireEnabled: true, requireApiKey: true },
   );
   if (!configs.length) {
-    throw new Error('At least one enabled Newznab indexer with an API key is required');
+    throw new Error(
+      "At least one enabled Newznab indexer with an API key is required",
+    );
   }
   const results = [];
   for (const config of configs) {
     const message = await validateNewznabSearch(config, {
       debug: NEWZNAB_DEBUG_ENABLED,
       label: `[NEWZNAB][${config.displayName || config.id}]`,
-      query: values?.NEWZNAB_TEST_QUERY || 'usenetstreamer',
+      query: values?.NEWZNAB_TEST_QUERY || "usenetstreamer",
     });
-    results.push(`${config.displayName || 'Newznab'}: ${message}`);
+    results.push(`${config.displayName || "Newznab"}: ${message}`);
   }
-  return results.join('; ');
+  return results.join("; ");
 }
 
 async function testNewznabSearch(values) {
   const configs = filterUsableConfigs(
     getNewznabConfigsFromValues(values, { includeEmpty: true }),
-    { requireEnabled: true, requireApiKey: true }
+    { requireEnabled: true, requireApiKey: true },
   );
   if (!configs.length) {
-    throw new Error('Configure at least one enabled Newznab indexer (endpoint + API key) before running a test search');
+    throw new Error(
+      "Configure at least one enabled Newznab indexer (endpoint + API key) before running a test search",
+    );
   }
-  const type = String(values?.NEWZNAB_TEST_TYPE || 'search').trim().toLowerCase() || 'search';
-  const query = (values?.NEWZNAB_TEST_QUERY || '').trim();
+  const type =
+    String(values?.NEWZNAB_TEST_TYPE || "search")
+      .trim()
+      .toLowerCase() || "search";
+  const query = (values?.NEWZNAB_TEST_QUERY || "").trim();
   if (!query) {
-    throw new Error('Provide a query before running a Newznab test search');
+    throw new Error("Provide a query before running a Newznab test search");
   }
   const plan = {
     type,
@@ -393,16 +458,20 @@ async function testNewznabSearch(values) {
     rawQuery: query,
     tokens: [],
   };
-  logNewznabDebug('Running admin Newznab test search', {
+  logNewznabDebug("Running admin Newznab test search", {
     plan,
-    indexers: configs.map((config) => ({ id: config.id, name: config.displayName, endpoint: config.endpoint })),
+    indexers: configs.map((config) => ({
+      id: config.id,
+      name: config.displayName,
+      endpoint: config.endpoint,
+    })),
   });
   const result = await searchNewznabIndexers(plan, configs, {
     filterNzbOnly: true,
     debug: NEWZNAB_DEBUG_ENABLED,
-    label: '[NEWZNAB][TEST]',
+    label: "[NEWZNAB][TEST]",
   });
-  logNewznabDebug('Admin Newznab test search completed', {
+  logNewznabDebug("Admin Newznab test search completed", {
     totalResults: result?.results?.length || 0,
     endpoints: result?.endpoints || [],
     errors: result?.errors || [],
@@ -410,43 +479,52 @@ async function testNewznabSearch(values) {
   const total = result.results.length;
   const summaries = result.endpoints
     .map((endpoint) => `${endpoint.name}: ${endpoint.count}`)
-    .join(', ');
+    .join(", ");
   const sampleTitles = result.results
     .map((item) => item?.title)
     .filter(Boolean)
     .slice(0, 3);
-  const baseMessage = total > 0
-    ? `Found ${total} NZB${total === 1 ? '' : 's'} across ${result.endpoints.length} endpoint${result.endpoints.length === 1 ? '' : 's'}`
-    : `No NZBs found for "${query}"`;
-  const sampleMessage = sampleTitles.length ? ` Sample titles: ${sampleTitles.join(' | ')}` : '';
-  const errorMessage = result.errors?.length ? ` Errors: ${result.errors.join('; ')}` : '';
-  return `${baseMessage}${summaries ? ` (${summaries})` : ''}.${sampleMessage}${errorMessage}`.trim();
+  const baseMessage =
+    total > 0
+      ? `Found ${total} NZB${total === 1 ? "" : "s"} across ${result.endpoints.length} endpoint${result.endpoints.length === 1 ? "" : "s"}`
+      : `No NZBs found for "${query}"`;
+  const sampleMessage = sampleTitles.length
+    ? ` Sample titles: ${sampleTitles.join(" | ")}`
+    : "";
+  const errorMessage = result.errors?.length
+    ? ` Errors: ${result.errors.join("; ")}`
+    : "";
+  return `${baseMessage}${summaries ? ` (${summaries})` : ""}.${sampleMessage}${errorMessage}`.trim();
 }
 
 async function testTmdbConnection(values) {
-  const apiKey = (values?.TMDB_API_KEY || '').trim();
-  if (!apiKey) throw new Error('TMDb API Key is required');
-  
+  const apiKey = (values?.TMDB_API_KEY || "").trim();
+  if (!apiKey) throw new Error("TMDb API Key is required");
+
   const timeout = 8000;
-  
+
   try {
     // Test the API key by fetching configuration
     const response = await axios.request({
-      method: 'GET',
-      url: 'https://api.themoviedb.org/3/configuration',
+      method: "GET",
+      url: "https://api.themoviedb.org/3/configuration",
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Accept': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json",
       },
       timeout,
       validateStatus: () => true,
     });
 
     if (response.status === 401) {
-      throw new Error('Invalid API key: check your TMDb Read Access Token (v4 auth)');
+      throw new Error(
+        "Invalid API key: check your TMDb Read Access Token (v4 auth)",
+      );
     }
     if (response.status === 403) {
-      throw new Error('API key forbidden: ensure you are using a v4 Read Access Token');
+      throw new Error(
+        "API key forbidden: ensure you are using a v4 Read Access Token",
+      );
     }
     if (response.status >= 400) {
       throw new Error(`TMDb API returned status ${response.status}`);
@@ -454,13 +532,13 @@ async function testTmdbConnection(values) {
 
     // Verify the response has expected structure
     if (!response.data?.images?.base_url) {
-      throw new Error('Unexpected TMDb response format');
+      throw new Error("Unexpected TMDb response format");
     }
 
-    return 'TMDb API connection successful';
+    return "TMDb API connection successful";
   } catch (error) {
-    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
-      throw new Error('TMDb API request timed out');
+    if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
+      throw new Error("TMDb API request timed out");
     }
     throw error;
   }

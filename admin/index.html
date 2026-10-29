@@ -97,7 +97,10 @@
         <p id="dashboardStatus" class="hint hidden" role="status" aria-atomic="true"></p>
         <div id="dashboardErrors" role="alert"></div>
         <div id="dashboardTiles" class="dashboard-tiles"></div>
-        <section class="dashboard-block"><h3><i data-lucide="activity" aria-hidden="true"></i>Provider usage</h3><div id="dashboardProviders"></div></section>
+        <div class="dashboard-columns dashboard-services">
+          <section class="dashboard-block"><h3><i data-lucide="activity" aria-hidden="true"></i>Providers</h3><div id="dashboardProviderHealth"></div><div id="dashboardProviders"></div></section>
+          <section class="dashboard-block"><h3><i data-lucide="radio-tower" aria-hidden="true"></i>Indexers / Newznab</h3><div id="dashboardIndexerHealth"></div></section>
+        </div>
         <section class="dashboard-block">
           <h3><i data-lucide="database" aria-hidden="true"></i>NZBStreamer caches</h3>
           <p class="hint">Cached NZB payloads and stream results, not downloaded video storage.</p>
@@ -1002,6 +1005,34 @@ health'></textarea>
           <div class="inline-actions">
             <button type="button" class="secondary" data-test="usenet">Test Connection</button>
             <span class="status-message" data-test-status="usenet"></span>
+          </div>
+        </section>
+
+        <section class="group" id="notificationsGroup">
+          <h3>Notifications</h3>
+          <div class="field-grid">
+            <label class="checkbox">
+              <input name="HEALTH_MONITOR_ENABLED" type="checkbox" checked />
+              <span>Enable service monitoring</span>
+            </label>
+            <label>Check interval (minutes)
+              <input name="HEALTH_CHECK_INTERVAL_MINUTES" type="number" min="1" max="1440" placeholder="5" />
+            </label>
+            <label>Telegram Bot Token
+              <input name="HEALTH_TELEGRAM_BOT_TOKEN" type="password" autocomplete="new-password" />
+            </label>
+            <label>Telegram Chat ID
+              <input name="HEALTH_TELEGRAM_CHAT_ID" type="text" autocomplete="off" />
+            </label>
+            <label>Discord Webhook URL
+              <input name="HEALTH_DISCORD_WEBHOOK_URL" type="password" autocomplete="new-password" />
+            </label>
+          </div>
+          <div class="inline-actions">
+            <button type="button" class="secondary" data-test="telegram"><i data-lucide="send" aria-hidden="true"></i>Test Telegram</button>
+            <span class="status-message" data-test-status="telegram" role="status"></span>
+            <button type="button" class="secondary" data-test="discord"><i data-lucide="send" aria-hidden="true"></i>Test Discord</button>
+            <span class="status-message" data-test-status="discord" role="status"></span>
           </div>
         </section>
 

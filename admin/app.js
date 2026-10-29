@@ -12,12 +12,18 @@
   const dashboardStatus = document.getElementById("dashboardStatus");
   const dashboardUpdated = document.getElementById("dashboardUpdated");
   const refreshDashboardButton = document.getElementById("refreshDashboard");
-  const refreshDashboardLabel = document.getElementById("refreshDashboardLabel");
-  const historyPreviousButton = document.getElementById("dashboardHistoryPrevious");
+  const refreshDashboardLabel = document.getElementById(
+    "refreshDashboardLabel",
+  );
+  const historyPreviousButton = document.getElementById(
+    "dashboardHistoryPrevious",
+  );
   const historyNextButton = document.getElementById("dashboardHistoryNext");
   const historyFailedToggle = document.getElementById("dashboardHistoryFailed");
   const historyClearButton = document.getElementById("dashboardHistoryClear");
-  const historyActionStatus = document.getElementById("dashboardHistoryActionStatus");
+  const historyActionStatus = document.getElementById(
+    "dashboardHistoryActionStatus",
+  );
   let dashboardHistoryClearing = false;
   let dashboardFailedOnly = false;
   let dashboardHistoryPage = 1;
@@ -527,7 +533,9 @@
         ? values[key]
         : "";
       if (element.type === "checkbox") {
-        if (key === "TMDB_ENABLED" && rawValue === "") {
+        if (key === "HEALTH_MONITOR_ENABLED" && rawValue === "") {
+          element.checked = true;
+        } else if (key === "TMDB_ENABLED" && rawValue === "") {
           element.checked = false;
         } else {
           element.checked = parseBool(rawValue);
@@ -1524,7 +1532,7 @@
   async function runConnectionTest(button) {
     const type = button?.dataset?.test;
     if (!type) return;
-    const originalText = button.textContent;
+    const originalMarkup = button.innerHTML;
     setTestStatus(type, "", false);
     button.disabled = true;
     button.textContent = "Testing...";
@@ -1543,7 +1551,7 @@
       setTestStatus(type, error.message || "Request failed.", true);
     } finally {
       button.disabled = false;
-      button.textContent = originalText;
+      button.innerHTML = originalMarkup;
     }
   }
 
@@ -1558,8 +1566,7 @@
       const result = await apiRequest("/admin/api/user-agents/update", {
         method: "POST",
       });
-      defaultUserAgentsStatus.textContent =
-        `Updated: ${result.searchUserAgent} · ${result.downloadUserAgent}`;
+      defaultUserAgentsStatus.textContent = `Updated: ${result.searchUserAgent} · ${result.downloadUserAgent}`;
       defaultUserAgentsStatus.classList.add("success");
     } catch (error) {
       defaultUserAgentsStatus.textContent =
@@ -1754,7 +1761,8 @@
     if (items === null || items.length === 0) {
       const message = document.createElement("p");
       message.className = "hint";
-      message.textContent = items === null ? "Data unavailable. See errors above." : "No items.";
+      message.textContent =
+        items === null ? "Data unavailable. See errors above." : "No items.";
       container.appendChild(message);
       return;
     }
@@ -1779,7 +1787,10 @@
       detail.appendChild(status);
       for (const [label, value] of [
         ["Category", item.category || "Uncategorized"],
-        [queue ? "Progress" : "Size", queue ? `${item.percentage}%` : dashboardBytes(item.bytes)],
+        [
+          queue ? "Progress" : "Size",
+          queue ? `${item.percentage}%` : dashboardBytes(item.bytes),
+        ],
       ]) {
         const metadata = document.createElement("span");
         metadata.className = "dashboard-meta-badge";
@@ -1788,7 +1799,9 @@
         detail.appendChild(metadata);
       }
       if (!queue) {
-        const timestamp = document.createElement(item.completedAt ? "time" : "span");
+        const timestamp = document.createElement(
+          item.completedAt ? "time" : "span",
+        );
         timestamp.className = "dashboard-meta-badge";
         if (item.completedAt) {
           timestamp.dateTime = item.completedAt;
@@ -1804,7 +1817,10 @@
         const progress = document.createElement("progress");
         progress.max = 100;
         progress.value = item.percentage;
-        progress.setAttribute("aria-label", `${item.name}: ${item.percentage}%`);
+        progress.setAttribute(
+          "aria-label",
+          `${item.name}: ${item.percentage}%`,
+        );
         row.appendChild(progress);
       }
       container.appendChild(row);
@@ -1813,15 +1829,24 @@
 
   function syncDashboardPagination() {
     const busy = dashboardLoading || dashboardHistoryClearing;
-    historyPreviousButton.disabled = busy || !dashboardHistoryAvailable || dashboardHistoryPage <= 1;
-    historyNextButton.disabled = busy || !dashboardHistoryAvailable || dashboardHistoryPage >= dashboardHistoryPages;
+    historyPreviousButton.disabled =
+      busy || !dashboardHistoryAvailable || dashboardHistoryPage <= 1;
+    historyNextButton.disabled =
+      busy ||
+      !dashboardHistoryAvailable ||
+      dashboardHistoryPage >= dashboardHistoryPages;
     historyFailedToggle.disabled = busy;
     historyClearButton.disabled = busy;
   }
 
   async function loadDashboard(requestedPage = dashboardHistoryPage) {
-    if (dashboardLoading || dashboardHistoryClearing || activeSettingsView !== "dashboard" ||
-        !document.body.classList.contains("has-config")) return;
+    if (
+      dashboardLoading ||
+      dashboardHistoryClearing ||
+      activeSettingsView !== "dashboard" ||
+      !document.body.classList.contains("has-config")
+    )
+      return;
     dashboardLoading = true;
     syncDashboardPagination();
     refreshDashboardButton.disabled = true;
@@ -1831,7 +1856,10 @@
     dashboardStatus.classList.add("hidden");
     dashboardStatus.classList.remove("error");
     try {
-      const data = await apiRequest(`/admin/api/dashboard?historyPage=${requestedPage}&failedOnly=${historyFailedToggle.checked}`, { cache: "no-store" });
+      const data = await apiRequest(
+        `/admin/api/dashboard?historyPage=${requestedPage}&failedOnly=${historyFailedToggle.checked}`,
+        { cache: "no-store" },
+      );
       if (activeSettingsView !== "dashboard") return;
       const errors = document.getElementById("dashboardErrors");
       errors.replaceChildren();
@@ -1841,16 +1869,37 @@
         message.textContent = `${error.source}: ${error.message}`;
         errors.appendChild(message);
       });
-      document.getElementById("dashboardTiles").replaceChildren(
-        dashboardTile("Backend", data.backend.mode === "internal" ? "Built-in NZBDavEx" : "External NZBDav",
-          data.backend.reachable ? "Responding" : "Unavailable"),
-        dashboardTile("Queued downloads", data.queue?.total ?? "Unavailable"),
-        dashboardTile(data.history?.failedOnly ? "Failed history items" : "History items", data.history?.total ?? "Unavailable"),
-        dashboardTile("Active reads", data.overview?.activeReads ?? "Unavailable"),
-        dashboardTile("Data served / minute", dashboardBytes(data.overview?.bytesServedPerMinute)),
-        dashboardTile("Catalogue files", data.overview?.fileCount ?? "Unavailable",
-          data.overview ? `${dashboardBytes(data.overview.totalBytes)} virtual file size (not disk usage)` : null),
-      );
+      document
+        .getElementById("dashboardTiles")
+        .replaceChildren(
+          dashboardTile(
+            "Backend",
+            data.backend.mode === "internal"
+              ? "Built-in NZBDavEx"
+              : "External NZBDav",
+            data.backend.reachable ? "Responding" : "Unavailable",
+          ),
+          dashboardTile("Queued downloads", data.queue?.total ?? "Unavailable"),
+          dashboardTile(
+            data.history?.failedOnly ? "Failed history items" : "History items",
+            data.history?.total ?? "Unavailable",
+          ),
+          dashboardTile(
+            "Active reads",
+            data.overview?.activeReads ?? "Unavailable",
+          ),
+          dashboardTile(
+            "Data served / minute",
+            dashboardBytes(data.overview?.bytesServedPerMinute),
+          ),
+          dashboardTile(
+            "Catalogue files",
+            data.overview?.fileCount ?? "Unavailable",
+            data.overview
+              ? `${dashboardBytes(data.overview.totalBytes)} virtual file size (not disk usage)`
+              : null,
+          ),
+        );
       renderDashboardList("dashboardQueue", data.queue?.items ?? null, true);
       renderDashboardList("dashboardHistory", data.history?.items ?? null);
       dashboardHistoryAvailable = data.history !== null;
@@ -1858,38 +1907,101 @@
       if (data.history) {
         dashboardFailedOnly = data.history.failedOnly;
         dashboardHistoryPage = data.history.page;
-        dashboardHistoryPages = Math.max(1, Math.ceil(data.history.total / data.history.pageSize));
-        const start = data.history.total ? (dashboardHistoryPage - 1) * data.history.pageSize + 1 : 0;
-        const end = Math.min(data.history.total, (dashboardHistoryPage - 1) * data.history.pageSize + data.history.items.length);
+        dashboardHistoryPages = Math.max(
+          1,
+          Math.ceil(data.history.total / data.history.pageSize),
+        );
+        const start = data.history.total
+          ? (dashboardHistoryPage - 1) * data.history.pageSize + 1
+          : 0;
+        const end = Math.min(
+          data.history.total,
+          (dashboardHistoryPage - 1) * data.history.pageSize +
+            data.history.items.length,
+        );
         historyPageLabel.textContent = `Page ${dashboardHistoryPage} of ${dashboardHistoryPages} | ${start}-${end} of ${data.history.total} items`;
       } else {
         historyPageLabel.textContent = "History unavailable.";
+      }
+      for (const [kind, id] of [
+        ["provider", "dashboardProviderHealth"],
+        ["indexer", "dashboardIndexerHealth"],
+      ]) {
+        const container = document.getElementById(id);
+        const services = (data.services || []).filter(
+          (service) => service.kind === kind,
+        );
+        container.replaceChildren();
+        for (const service of services) {
+          const checked = new Date(service.checkedAt).toLocaleTimeString();
+          const row = document.createElement("div");
+          row.className = "dashboard-item";
+          const heading = document.createElement("div");
+          heading.className = "dashboard-item-meta";
+          const name = document.createElement("strong");
+          name.textContent = service.name;
+          const status = document.createElement("span");
+          status.className = `dashboard-health-status ${service.status === "healthy" ? "healthy" : "unhealthy"}`;
+          status.textContent =
+            service.status === "healthy" ? "Online" : "Problem";
+          heading.append(name, status);
+          const detail = document.createElement("p");
+          detail.className = "hint";
+          detail.textContent = `${service.message} Checked ${checked}`;
+          row.append(heading, detail);
+          container.appendChild(row);
+        }
+        if (!services.length) {
+          const message = document.createElement("p");
+          message.className = "hint";
+          message.textContent = "No monitoring results available.";
+          container.appendChild(message);
+        }
       }
       const providers = document.getElementById("dashboardProviders");
       providers.replaceChildren();
       if (data.providers?.length) {
         data.providers.forEach((provider) => {
-          const row = dashboardTile(provider.name, dashboardBytes(provider.bytesUsed),
-            provider.byteLimit > 0 ? `Limit: ${dashboardBytes(provider.byteLimit)}` : "No byte limit");
+          const row = dashboardTile(
+            provider.name,
+            dashboardBytes(provider.bytesUsed),
+            provider.byteLimit > 0
+              ? `Limit: ${dashboardBytes(provider.byteLimit)}`
+              : "No byte limit",
+          );
           if (provider.overLimit) row.classList.add("error");
           providers.appendChild(row);
         });
       } else {
         const message = document.createElement("p");
         message.className = "hint";
-        message.textContent = data.backend.mode === "external"
-          ? "Provider and overview metrics are available for the built-in NZBDavEx backend only."
-          : data.providers === null ? "Provider data unavailable. See errors above." : "No providers configured.";
+        message.textContent =
+          data.backend.mode === "external"
+            ? "Provider and overview metrics are available for the built-in NZBDavEx backend only."
+            : data.providers === null
+              ? "Provider data unavailable. See errors above."
+              : "No providers configured.";
         providers.appendChild(message);
       }
-      document.getElementById("dashboardCaches").replaceChildren(
-        dashboardTile("NZB payload disk cache", `${data.caches.disk.entries} entries`,
-          `${dashboardBytes(data.caches.disk.totalBytes)} / ${dashboardBytes(data.caches.disk.maxBytes)}`),
-        dashboardTile("Stream response cache", `${data.caches.stream.entries} entries`,
-          dashboardBytes(data.caches.stream.bytes)),
-        dashboardTile("NZBDav stream cache", `${data.caches.nzbdav.entries} entries`,
-          `${data.caches.nzbdav.byStatus.ready} ready | ${data.caches.nzbdav.byStatus.pending} pending`),
-      );
+      document
+        .getElementById("dashboardCaches")
+        .replaceChildren(
+          dashboardTile(
+            "NZB payload disk cache",
+            `${data.caches.disk.entries} entries`,
+            `${dashboardBytes(data.caches.disk.totalBytes)} / ${dashboardBytes(data.caches.disk.maxBytes)}`,
+          ),
+          dashboardTile(
+            "Stream response cache",
+            `${data.caches.stream.entries} entries`,
+            dashboardBytes(data.caches.stream.bytes),
+          ),
+          dashboardTile(
+            "NZBDav stream cache",
+            `${data.caches.nzbdav.entries} entries`,
+            `${data.caches.nzbdav.byStatus.ready} ready | ${data.caches.nzbdav.byStatus.pending} pending`,
+          ),
+        );
       const updatedTime = document.createElement("strong");
       updatedTime.textContent = new Date(data.updatedAt).toLocaleTimeString();
       dashboardUpdated.replaceChildren("Updated ", updatedTime);
@@ -1911,12 +2023,22 @@
   }
 
   refreshDashboardButton.addEventListener("click", () => loadDashboard());
-  historyPreviousButton.addEventListener("click", () => loadDashboard(dashboardHistoryPage - 1));
-  historyNextButton.addEventListener("click", () => loadDashboard(dashboardHistoryPage + 1));
+  historyPreviousButton.addEventListener("click", () =>
+    loadDashboard(dashboardHistoryPage - 1),
+  );
+  historyNextButton.addEventListener("click", () =>
+    loadDashboard(dashboardHistoryPage + 1),
+  );
   historyFailedToggle.addEventListener("change", () => loadDashboard(1));
   historyClearButton.addEventListener("click", async () => {
-    if (dashboardLoading || dashboardHistoryClearing ||
-        !window.confirm("Clear ALL history entries, including completed and failed jobs? This cannot be undone. Virtual files are kept, but history-based catalogs and lookups may change.")) return;
+    if (
+      dashboardLoading ||
+      dashboardHistoryClearing ||
+      !window.confirm(
+        "Clear ALL history entries, including completed and failed jobs? This cannot be undone. Virtual files are kept, but history-based catalogs and lookups may change.",
+      )
+    )
+      return;
     dashboardHistoryClearing = true;
     syncDashboardPagination();
     refreshDashboardButton.disabled = true;
@@ -1967,11 +2089,17 @@
     const dashboardActive = activeSettingsView === "dashboard";
     configSection.classList.toggle("admin-view-dashboard", dashboardActive);
     dashboardPanel.classList.toggle("hidden", !dashboardActive);
-    const dashboardButton = settingsNav.querySelector('[data-view="dashboard"]');
+    const dashboardButton = settingsNav.querySelector(
+      '[data-view="dashboard"]',
+    );
     dashboardButton.classList.toggle("active", dashboardActive);
     if (dashboardActive) dashboardButton.setAttribute("aria-current", "page");
     else dashboardButton.removeAttribute("aria-current");
-    if (dashboardActive && !dashboardTimer && document.body.classList.contains("has-config")) {
+    if (
+      dashboardActive &&
+      !dashboardTimer &&
+      document.body.classList.contains("has-config")
+    ) {
       loadDashboard();
       dashboardTimer = setInterval(() => {
         if (!document.hidden) loadDashboard();
@@ -1984,11 +2112,13 @@
     manifestButton.classList.toggle("active", manifestActive);
     if (manifestActive) manifestButton.setAttribute("aria-current", "page");
     else manifestButton.removeAttribute("aria-current");
-    currentViewTitle.textContent = dashboardActive ? "Dashboard" : manifestActive
-      ? "Install Addon"
-      : activeSettingsView
-          .querySelector(":scope > h3")
-          .firstChild.textContent.trim();
+    currentViewTitle.textContent = dashboardActive
+      ? "Dashboard"
+      : manifestActive
+        ? "Install Addon"
+        : activeSettingsView
+            .querySelector(":scope > h3")
+            .firstChild.textContent.trim();
   }
 
   async function confirmNavigationWithUnsavedChanges() {
@@ -2060,9 +2190,14 @@
     dashboardButton.type = "button";
     dashboardButton.className = "sidebar-link";
     dashboardButton.dataset.view = "dashboard";
-    dashboardButton.innerHTML = '<i data-lucide="layout-dashboard" aria-hidden="true"></i>Dashboard';
+    dashboardButton.innerHTML =
+      '<i data-lucide="layout-dashboard" aria-hidden="true"></i>Dashboard';
     dashboardButton.addEventListener("click", async () => {
-      if (activeSettingsView !== "dashboard" && !(await confirmNavigationWithUnsavedChanges())) return;
+      if (
+        activeSettingsView !== "dashboard" &&
+        !(await confirmNavigationWithUnsavedChanges())
+      )
+        return;
       document.body.classList.remove("mobile-nav-open", "auth-open");
       mobileNavToggle?.setAttribute("aria-expanded", "false");
       activeSettingsView = "dashboard";
@@ -2081,6 +2216,7 @@
       "Metadata",
       "Protection",
       "Providers",
+      "Addon",
       "Metadata",
       "Metadata",
       "Addon",
@@ -2096,6 +2232,7 @@
       "Addon Catalog",
       "Stream Protection",
       "NNTP Health",
+      "Notifications",
       "TMDb Metadata",
       "TVDB ID Mapping",
       "Addon Metadata",
@@ -2111,6 +2248,7 @@
       "clapperboard",
       "shield-check",
       "key-round",
+      "bell",
       "film",
       "database",
       "settings-2",
@@ -2155,14 +2293,18 @@
       });
       categoryGroups.get(category).appendChild(button);
     });
-    configForm.querySelectorAll("[data-settings-section-link]").forEach((link) => {
-      link.addEventListener("click", (event) => {
-        event.preventDefault();
-        const section = document.getElementById(link.hash.slice(1));
-        if (!section || !isSettingsSectionAvailable(section)) return;
-        settingsNav.querySelector(`[data-view="${section.dataset.navView}"]`)?.click();
+    configForm
+      .querySelectorAll("[data-settings-section-link]")
+      .forEach((link) => {
+        link.addEventListener("click", (event) => {
+          event.preventDefault();
+          const section = document.getElementById(link.hash.slice(1));
+          if (!section || !isSettingsSectionAvailable(section)) return;
+          settingsNav
+            .querySelector(`[data-view="${section.dataset.navView}"]`)
+            ?.click();
+        });
       });
-    });
     const manifestButton = document.createElement("button");
     manifestButton.type = "button";
     manifestButton.className = "sidebar-link";
@@ -2315,7 +2457,10 @@
     if (!button) return;
     resetCopyFeedback(button);
     button.querySelector("[data-copy-label]").textContent = message;
-    copyFeedbackTimers.set(button, setTimeout(() => resetCopyFeedback(button), 2500));
+    copyFeedbackTimers.set(
+      button,
+      setTimeout(() => resetCopyFeedback(button), 2500),
+    );
   }
 
   function getStremioProtocolUrl(url) {
