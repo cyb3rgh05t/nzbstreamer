@@ -62,6 +62,158 @@ test("notifies confirmed outages and recovery once per channel without leaking c
   assert.equal(sent.length, 4);
 });
 
+test("Telegram and Discord can be disabled independently for outages and recoveries", async () => {
+  for (const disabled of ["telegram", "discord"]) {
+    const { monitor, sent, values, fail, recover } = setup();
+    values[`HEALTH_${disabled.toUpperCase()}_ENABLED`] = "false";
+    fail();
+    await monitor.checkNow();
+    await monitor.checkNow();
+    assert.equal(sent.length, 1);
+    assert.equal(Boolean(sent[0].embeds), disabled === "telegram");
+    recover();
+    await monitor.checkNow();
+    assert.equal(sent.length, 2);
+    assert.equal(Boolean(sent[1].embeds), disabled === "telegram");
+    assert.equal(values.HEALTH_TELEGRAM_BOT_TOKEN, "private-token");
+    assert.ok(values.HEALTH_DISCORD_WEBHOOK_URL.includes("private-token"));
+  }
+});
+
+test("disabling both notification channels preserves dashboard health checks", async () => {
+  const { monitor, sent, values, fail } = setup();
+  values.HEALTH_TELEGRAM_ENABLED = "false";
+  values.HEALTH_DISCORD_ENABLED = "false";
+  fail();
+  await monitor.checkNow();
+  await monitor.checkNow();
+  assert.equal(sent.length, 0);
+  assert.equal(monitor.getSnapshot()[0].status, "unhealthy");
+  await assert.rejects(
+    monitor.testNotification(values, "telegram"),
+    /Telegram notifications are disabled/,
+  );
+  await assert.rejects(
+    monitor.testNotification(values, "discord"),
+    /Discord notifications are disabled/,
+  );
+  assert.equal(sent.length, 0);
+});
+
+test("reenabling a channel reports an ongoing outage without duplicating the other channel", async () => {
+  const { monitor, sent, values, fail } = setup();
+  fail();
+  await monitor.checkNow();
+  await monitor.checkNow();
+  assert.equal(sent.length, 2);
+  values.HEALTH_TELEGRAM_ENABLED = "false";
+  await monitor.checkNow();
+  assert.equal(sent.length, 2);
+  values.HEALTH_TELEGRAM_ENABLED = "true";
+  await monitor.checkNow();
+  assert.equal(sent.length, 3);
+  assert.equal(sent[2].parse_mode, "HTML");
+});
+
+test("outage and recovery use styled messages with timestamps and observed downtime", async () => {
+  let time = Date.parse("2026-10-29T10:00:00Z");
+  const { monitor, sent, fail, recover, values } = setup({ now: () => time });
+  values.HEALTH_CHECK_INTERVAL_MINUTES = "5";
+  fail();
+  await monitor.checkNow();
+  time += 300000;
+  await monitor.checkNow();
+  const telegram = sent[0];
+  const discord = sent[1];
+  assert.equal(telegram.parse_mode, "HTML");
+  assert.match(telegram.text, /<b>SERVICE UNAVAILABLE<\/b>/);
+  assert.match(telegram.text, /<b>Failed checks:<\/b> 2/);
+  assert.equal(telegram.link_preview_options.is_disabled, true);
+  assert.equal(discord.username, "NZBStreamer");
+  assert.equal(discord.embeds[0].color, 0xef4444);
+  assert.equal(discord.embeds[0].timestamp, "2026-10-29T10:05:00.000Z");
+  assert.deepEqual(discord.allowed_mentions, { parse: [] });
+  time += 300000;
+  recover();
+  await monitor.checkNow();
+  assert.match(sent[2].text, /<b>BACK ONLINE<\/b>/);
+  assert.match(sent[2].text, /<b>Observed downtime:<\/b> 10m/);
+  assert.equal(sent[3].embeds[0].color, 0x22c55e);
+});
+
+test("rich test notifications use the gold brand style without pretending there is an outage", async () => {
+  const { monitor, sent, values } = setup();
+  await monitor.testNotification(values, "telegram");
+  await monitor.testNotification(values, "discord");
+  assert.match(sent[0].text, /<b>NOTIFICATIONS CONNECTED<\/b>/);
+  assert.match(sent[0].text, /<b>Channel:<\/b> Telegram/);
+  assert.equal(sent[1].embeds[0].title, "Notifications connected");
+  assert.equal(sent[1].embeds[0].color, 0xe5a209);
+  assert.equal(JSON.stringify(sent).includes("private"), false);
+});
+
+test("service labels are escaped and bounded in both notification formats", async () => {
+  const { monitor, sent } = setup({
+    indexers: {
+      getNewznabConfigsFromValues: () => [
+        {
+          id: "01",
+          enabled: true,
+          endpoint: "https://indexer.invalid",
+          displayName: "<b>Indexer & [one]</b> " + "name".repeat(500),
+        },
+      ],
+      validateNewznabSearch: async () => {
+        throw new Error("private-key");
+      },
+    },
+  });
+  await monitor.checkNow();
+  await monitor.checkNow();
+  assert.match(sent[0].text, /&lt;b&gt;Indexer &amp; \[one\]&lt;\/b&gt;/);
+  assert.equal(sent[0].text.includes("<b>Indexer"), false);
+  assert.match(sent[1].embeds[0].fields[0].value, /\\\[one\\\]/);
+  assert.ok(sent[0].text.length < 4096);
+  assert.ok(sent[1].embeds[0].fields[0].value.length <= 1024);
+});
+
+test("recovery delivery retries preserve the detected recovery time and downtime", async (t) => {
+  t.mock.method(console, "warn", () => {});
+  let time = Date.parse("2026-10-29T10:00:00Z");
+  let recoveryAttempts = 0;
+  const deliveries = [];
+  const { monitor, values, fail, recover } = setup({
+    now: () => time,
+    request: async (url, options) => {
+      const body = JSON.parse(options.body);
+      deliveries.push(body);
+      if (body.embeds[0].title === "Back online" && ++recoveryAttempts === 1) {
+        throw new Error("Temporary delivery failure");
+      }
+      return new Response(null, { status: 204 });
+    },
+  });
+  delete values.HEALTH_TELEGRAM_BOT_TOKEN;
+  fail();
+  await monitor.checkNow();
+  time += 300000;
+  await monitor.checkNow();
+  time += 300000;
+  recover();
+  await monitor.checkNow();
+  time += 3600000;
+  await monitor.checkNow();
+  assert.equal(deliveries.length, 3);
+  assert.deepEqual(deliveries[1], deliveries[2]);
+  assert.equal(deliveries[2].embeds[0].timestamp, "2026-10-29T10:10:00.000Z");
+  assert.equal(
+    deliveries[2].embeds[0].fields.find(
+      (field) => field.name === "Observed downtime",
+    ).value,
+    "10m",
+  );
+});
+
 test("collects enabled Newznab targets separately, even with no backend", async () => {
   const checked = [];
   const { monitor, values } = setup({

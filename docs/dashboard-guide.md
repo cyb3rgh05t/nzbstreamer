@@ -139,6 +139,34 @@ beginnen Status und Fehlerzaehler neu; es gibt keine persistente Alarmhistorie.
 Aenderungen an Einstellungen greifen spaetestens im naechsten Pruefintervall.
 Bot-Token und Webhook-URL werden wie API-Schluessel maskiert.
 
+### Darstellung der Meldungen
+
+**Enable Telegram notifications** und **Enable Discord notifications** schalten
+die Kanaele separat. Nach dem Speichern erhaelt ein deaktivierter Kanal weder
+Ausfaelle noch Entwarnungen; auch sein Testbutton ist gesperrt. Zugangsdaten
+bleiben gespeichert. Ohne explizite Kanal-Einstellung bleibt das bisherige
+Verhalten erhalten: konfigurierte Kanaele sind aktiv. Beide Kanaele koennen aus
+sein, waehrend **Enable service monitoring** fuer die Dashboard-Statusdaten an
+bleibt. Ein erneut aktivierter Kanal meldet eine weiterhin bestehende Stoerung
+bei der naechsten bestaetigten Fehlpruefung.
+
+Telegram erhaelt formatierte Nachrichten mit fetter Statusueberschrift und
+geordneten Details. Discord erhaelt native Embeds mit NZBStreamer-Absender:
+Rot fuer **Service unavailable**, Gruen fuer **Back online** und Gold fuer
+**Notifications connected** bei Testnachrichten.
+
+Ausfaelle nennen Dienst, Typ, bereinigten Fehlergrund, Anzahl der Fehlpruefungen,
+erste Fehlererkennung und Pruefintervall. Entwarnungen enthalten ausserdem die
+beobachtete Stoerungsdauer. Diese misst die Zeit zwischen erster fehlgeschlagener
+und erster erfolgreicher Pruefung, nicht den exakten Beginn oder das exakte Ende
+eines realen Ausfalls. Zeitstempel werden in UTC angezeigt. Wiederholte
+Zustellversuche einer Entwarnung behalten deren urspruenglichen Zeitstempel und
+deren Stoerungsdauer. Testnachrichten verwenden dasselbe Layout, behaupten aber
+keinen Ausfall und pruefen auch nicht die Gesundheit der Dienste.
+
+Zugangsdaten und ungefilterte API-Antworten werden nicht mitgeschickt.
+Telegram-Linkvorschauen und Discord-Erwaehnungen sind deaktiviert.
+
 ## 3. Die sechs Kennzahlen
 
 ### Backend

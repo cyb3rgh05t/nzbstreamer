@@ -543,12 +543,10 @@ adminApiRouter.get("/dashboard", async (req, res) => {
     !Number.isSafeInteger(historyPage) ||
     (historyPage - 1) * 10 > 2147483647
   ) {
-    res
-      .status(400)
-      .json({
-        error:
-          "historyPage must be a positive page number within the supported range.",
-      });
+    res.status(400).json({
+      error:
+        "historyPage must be a positive page number within the supported range.",
+    });
     return;
   }
   try {
@@ -568,11 +566,9 @@ adminApiRouter.get("/dashboard", async (req, res) => {
 adminApiRouter.post("/dashboard/history/clear", async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   if (req.body?.confirm !== "clear-all-history") {
-    res
-      .status(400)
-      .json({
-        error: "Explicit confirmation is required to clear all history.",
-      });
+    res.status(400).json({
+      error: "Explicit confirmation is required to clear all history.",
+    });
     return;
   }
   try {
@@ -2062,6 +2058,8 @@ const ADMIN_CONFIG_KEYS = [
   "INDEXER_MANAGER_STRICT_ID_MATCH",
   "INDEXER_MANAGER_INDEXERS",
   "INDEXER_MANAGER_CACHE_MINUTES",
+  "HEALTH_TELEGRAM_ENABLED",
+  "HEALTH_DISCORD_ENABLED",
   "HEALTH_TELEGRAM_BOT_TOKEN",
   "HEALTH_MONITOR_ENABLED",
   "HEALTH_CHECK_INTERVAL_MINUTES",

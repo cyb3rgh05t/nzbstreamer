@@ -533,7 +533,14 @@
         ? values[key]
         : "";
       if (element.type === "checkbox") {
-        if (key === "HEALTH_MONITOR_ENABLED" && rawValue === "") {
+        if (
+          [
+            "HEALTH_MONITOR_ENABLED",
+            "HEALTH_TELEGRAM_ENABLED",
+            "HEALTH_DISCORD_ENABLED",
+          ].includes(key) &&
+          rawValue === ""
+        ) {
           element.checked = true;
         } else if (key === "TMDB_ENABLED" && rawValue === "") {
           element.checked = false;
@@ -557,6 +564,7 @@
         applyMaskedDisplay(element, rawValue);
       }
     });
+    syncNotificationControls();
   }
 
   function collectFormValues() {
@@ -1529,11 +1537,32 @@
     el.classList.toggle("success", Boolean(message && !isError));
   }
 
+  function syncNotificationControls() {
+    configForm
+      .querySelectorAll("[data-notification-channel]")
+      .forEach((toggle) => {
+        const channel = toggle.dataset.notificationChannel;
+        const button = configForm.querySelector(`[data-test="${channel}"]`);
+        if (!button) return;
+        button.disabled = !toggle.checked || button.dataset.testing === "true";
+        button.title = toggle.checked
+          ? "Send test notification"
+          : "Enable this channel to send a test notification";
+        if (!toggle.checked) setTestStatus(channel, "", false);
+      });
+  }
+
+  configForm.addEventListener("change", (event) => {
+    if (event.target.matches("[data-notification-channel]"))
+      syncNotificationControls();
+  });
+
   async function runConnectionTest(button) {
     const type = button?.dataset?.test;
     if (!type) return;
     const originalMarkup = button.innerHTML;
     setTestStatus(type, "", false);
+    button.dataset.testing = "true";
     button.disabled = true;
     button.textContent = "Testing...";
     try {
@@ -1550,8 +1579,10 @@
     } catch (error) {
       setTestStatus(type, error.message || "Request failed.", true);
     } finally {
+      delete button.dataset.testing;
       button.disabled = false;
       button.innerHTML = originalMarkup;
+      syncNotificationControls();
     }
   }
 
@@ -3084,6 +3115,9 @@
     setUnsavedChanges(true);
   });
   const deleteProfileBtn = document.getElementById("deleteProfileBtn");
+  document
+    .getElementById("createProfileButton")
+    .addEventListener("click", () => enterProfileMode(null, true));
   const profileInstallHint = document.getElementById("profileInstallHint");
   const profileMultiInstallWarning = document.getElementById(
     "profileMultiInstallWarning",
@@ -3138,22 +3172,44 @@
       knownProfiles.map((p) => ({ slug: p.slug, label: p.name })),
     );
     if (currentProfileSlug === "__new__")
-      tabs.push({ slug: "__new__", label: "✦ New (unsaved)" });
+      tabs.push({ slug: "__new__", label: "New profile" });
+    document.getElementById("profileCount").textContent =
+      `${tabs.length} ${tabs.length === 1 ? "profile" : "profiles"}`;
     profileTabs.innerHTML = "";
     tabs.forEach((t) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "profile-tab" + (t.slug === active ? " active" : "");
-      btn.textContent = t.label;
+      btn.setAttribute("aria-pressed", String(t.slug === active));
+      btn.setAttribute("aria-controls", "configForm");
+      btn.title = t.label;
+      const icon = document.createElement("i");
+      icon.dataset.lucide =
+        t.slug === "__default__" ? "settings-2" : "user-round";
+      icon.setAttribute("aria-hidden", "true");
+      const label = document.createElement("span");
+      label.className = "profile-tab-label";
+      const name = document.createElement("span");
+      name.className = "profile-tab-name";
+      name.textContent = t.label;
+      const type = document.createElement("span");
+      type.className = "profile-tab-type";
+      type.textContent =
+        t.slug === "__default__"
+          ? "Global"
+          : t.slug === "__new__"
+            ? "Unsaved"
+            : "Personal";
+      label.append(name, type);
+      const selected = document.createElement("i");
+      selected.dataset.lucide = "check";
+      selected.className = "profile-tab-selected";
+      selected.setAttribute("aria-hidden", "true");
+      btn.append(icon, label, selected);
       btn.addEventListener("click", () => selectTab(t.slug));
       profileTabs.appendChild(btn);
     });
-    const add = document.createElement("button");
-    add.type = "button";
-    add.className = "profile-tab profile-tab-add";
-    add.textContent = "+ New profile";
-    add.addEventListener("click", () => enterProfileMode(null, true));
-    profileTabs.appendChild(add);
+    window.lucide?.createIcons();
   }
   function syncSwitcherToCurrent() {
     renderProfileTabs();
@@ -3311,7 +3367,7 @@
       /\/manifest\.json([^/]*)$/,
       `/${slug}/manifest.json$1`,
     );
-    profileInstallHint.innerHTML = `Install this profile in Stremio: <code>${escapeHtmlText(url)}</code> — install only <strong>one</strong> profile per Stremio account (each installed profile makes this addon run again on every title).`;
+    profileInstallHint.innerHTML = `<span class="profile-install-label">Manifest</span><code>${escapeHtmlText(url)}</code>`;
     profileInstallHint.classList.remove("hidden");
   }
 

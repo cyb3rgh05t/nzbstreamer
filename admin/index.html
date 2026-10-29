@@ -13,18 +13,6 @@
   <link rel="stylesheet" href="vendor/tom-select/css/tom-select.default.min.css" />
   <link rel="stylesheet" href="styles.css?v=20261027&login=1" />
   <style>
-    /* Profile switcher — a sibling sub-panel matching the form's .group panels,
-       with tabs styled as pill buttons using the shared button language. */
-    .profile-switcher { background: var(--bg-panel); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin: 0; display: flex; flex-direction: column; gap: 0.65rem; }
-    .profile-tabs { display: flex; flex-wrap: wrap; gap: 0.55rem; align-items: center; }
-    .profile-tab { padding: 0.45rem 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--bg-input); color: var(--text-secondary); cursor: pointer; font-size: 0.88rem; font-weight: 600; line-height: 1.2; transition: background 160ms ease, color 160ms ease, border-color 160ms ease; }
-    .profile-tab:hover { background: var(--cffy-theme-surface-a30); border-color: var(--accent); color: var(--text-primary); }
-    .profile-tab.active { background: var(--cffy-theme-surface-tonal-a20); color: var(--accent); border-color: var(--accent); }
-    .profile-tab.active:hover { transform: translateY(-1px); }
-    .profile-tab-add { background: transparent; border: 1px dashed var(--border-strong); color: var(--text-secondary); }
-    .profile-tab-add:hover { background: transparent; border-color: var(--accent); color: var(--accent); }
-    .profile-edit-row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin: 0; }
-    .profile-edit-row #profileNameInput { flex: 1 1 220px; min-width: 160px; }
     .profile-inherit { opacity: 0.45; }
     .profile-override-label { font-size: 0.82rem; font-weight: 500; margin-left: auto; display: inline-flex; gap: 0.4rem; align-items: center; cursor: pointer; color: var(--text-secondary); }
     /* Guidance (not an error) — amber so it stands out from plain hints. */
@@ -128,23 +116,24 @@
           </section>
         </div>
       </section>
-      <div class="profile-switcher" id="profileSwitcherBar">
+      <div class="profile-switcher" id="profileSwitcherBar" role="region" aria-labelledby="profileSwitcherTitle">
         <div class="profile-switcher-heading">
           <span class="profile-switcher-icon"><i data-lucide="users-round" aria-hidden="true"></i></span>
-          <div><h2>Profiles</h2><p class="hint">One shared setup. Individual streaming preferences.</p></div>
+          <h2 id="profileSwitcherTitle">Profiles</h2>
+          <span class="profile-count" id="profileCount" aria-live="polite">1 profile</span>
+          <button type="button" class="primary profile-create" id="createProfileButton"><i data-lucide="plus" aria-hidden="true"></i>New profile</button>
         </div>
-        <div class="profile-tabs" id="profileTabs"></div>
-        <div class="profile-edit-row hidden" id="profileEditRow">
-          <input id="profileNameInput" type="text" placeholder="Profile name" maxlength="64" />
-          <button type="button" id="deleteProfileBtn" class="secondary">Delete</button>
+        <div class="profile-tabs" id="profileTabs" role="group" aria-label="Profile selection"></div>
+        <div class="profile-editor hidden" id="profileEditRow">
+          <div class="profile-edit-row">
+            <label class="profile-name-field" for="profileNameInput">Profile name
+              <input id="profileNameInput" type="text" placeholder="Profile name" maxlength="64" />
+            </label>
+            <button type="button" id="deleteProfileBtn" class="secondary" title="Delete profile"><i data-lucide="trash-2" aria-hidden="true"></i>Delete profile</button>
+          </div>
+          <p class="hint hidden" id="profileMultiInstallWarning"><strong>One profile per Stremio account.</strong></p>
+          <p class="hint hidden" id="profileInstallHint"></p>
         </div>
-        <div class="profile-guidance" id="profileHint">
-          <p class="hint"><strong>Shared setup</strong> Credentials, indexers, NZBDav and NNTP settings.</p>
-          <p class="hint"><strong>Per profile</strong> Sorting/filtering, naming, stream protection, streaming mode, catalog and addon name.</p>
-          <p class="hint profile-manifest-hint"><strong>Stremio install path</strong><code>/&lt;token&gt;/&lt;profile&gt;/manifest.json</code></p>
-        </div>
-        <p class="hint hidden" id="profileMultiInstallWarning">⚠️ <strong>Install only one profile per Stremio account.</strong> Stremio queries every installed addon on each title, so adding two profiles to the same account runs this addon twice per request — duplicating searches and triage, and slowing results. Use different profiles on different Stremio accounts or devices.</p>
-        <p class="hint hidden" id="profileInstallHint"></p>
       </div>
       <form id="configForm" novalidate>
         <section class="group streaming-mode-section" data-profile-section="Streaming Mode">
@@ -1010,7 +999,7 @@ health'></textarea>
 
         <section class="group" id="notificationsGroup">
           <h3>Notifications</h3>
-          <div class="field-grid">
+          <div class="field-grid notification-controls">
             <label class="checkbox">
               <input name="HEALTH_MONITOR_ENABLED" type="checkbox" checked />
               <span>Enable service monitoring</span>
@@ -1018,21 +1007,43 @@ health'></textarea>
             <label>Check interval (minutes)
               <input name="HEALTH_CHECK_INTERVAL_MINUTES" type="number" min="1" max="1440" placeholder="5" />
             </label>
-            <label>Telegram Bot Token
-              <input name="HEALTH_TELEGRAM_BOT_TOKEN" type="password" autocomplete="new-password" />
-            </label>
-            <label>Telegram Chat ID
-              <input name="HEALTH_TELEGRAM_CHAT_ID" type="text" autocomplete="off" />
-            </label>
-            <label>Discord Webhook URL
-              <input name="HEALTH_DISCORD_WEBHOOK_URL" type="password" autocomplete="new-password" />
-            </label>
           </div>
-          <div class="inline-actions">
-            <button type="button" class="secondary" data-test="telegram"><i data-lucide="send" aria-hidden="true"></i>Test Telegram</button>
-            <span class="status-message" data-test-status="telegram" role="status"></span>
-            <button type="button" class="secondary" data-test="discord"><i data-lucide="send" aria-hidden="true"></i>Test Discord</button>
-            <span class="status-message" data-test-status="discord" role="status"></span>
+          <div class="notification-channels">
+            <fieldset class="notification-channel">
+              <legend><i data-lucide="send" aria-hidden="true"></i>Telegram</legend>
+              <label class="checkbox">
+                <input name="HEALTH_TELEGRAM_ENABLED" type="checkbox" data-notification-channel="telegram" checked />
+                <span>Enable Telegram notifications</span>
+              </label>
+              <div class="field-grid">
+                <label>Bot Token
+                  <input name="HEALTH_TELEGRAM_BOT_TOKEN" type="password" autocomplete="new-password" />
+                </label>
+                <label>Chat ID
+                  <input name="HEALTH_TELEGRAM_CHAT_ID" type="text" autocomplete="off" />
+                </label>
+              </div>
+              <div class="notification-actions">
+                <button type="button" class="primary notification-test" data-test="telegram"><i data-lucide="send" aria-hidden="true"></i>Test Telegram</button>
+                <span class="status-message" data-test-status="telegram" role="status"></span>
+              </div>
+            </fieldset>
+            <fieldset class="notification-channel">
+              <legend><i data-lucide="messages-square" aria-hidden="true"></i>Discord</legend>
+              <label class="checkbox">
+                <input name="HEALTH_DISCORD_ENABLED" type="checkbox" data-notification-channel="discord" checked />
+                <span>Enable Discord notifications</span>
+              </label>
+              <div class="field-grid">
+                <label>Webhook URL
+                  <input name="HEALTH_DISCORD_WEBHOOK_URL" type="password" autocomplete="new-password" />
+                </label>
+              </div>
+              <div class="notification-actions">
+                <button type="button" class="primary notification-test" data-test="discord"><i data-lucide="send" aria-hidden="true"></i>Test Discord</button>
+                <span class="status-message" data-test-status="discord" role="status"></span>
+              </div>
+            </fieldset>
           </div>
         </section>
 
