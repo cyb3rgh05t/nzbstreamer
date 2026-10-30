@@ -2339,6 +2339,8 @@
         }
         sessionExpiredReturnToConfig = false;
         stopDashboardPolling();
+        document.body.classList.remove("mobile-nav-open");
+        mobileNavToggle?.setAttribute("aria-expanded", "false");
         try {
           await apiRequest("/admin/api/auth/logout", { method: "POST" });
         } catch (error) {

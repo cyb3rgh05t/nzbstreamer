@@ -2741,9 +2741,18 @@ body:not(.has-config) #authError {
     text-overflow: ellipsis;
   }
   .sidebar-footer {
-    display: flex;
+    display: none;
     border: 0;
     padding: 0;
+  }
+  .mobile-nav-open .app-sidebar .sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+    margin-top: 0.65rem;
+    padding: 0.65rem 0 0.25rem;
+    border-top: 1px solid var(--border-soft);
   }
   .sidebar-footer .sidebar-link,
   .sidebar-help {
@@ -3154,6 +3163,14 @@ h3 {
     margin-top: 0;
     padding-top: 0;
     border-top: 0;
+  }
+  .mobile-nav-open .app-sidebar .sidebar-footer {
+    margin-top: 0.65rem;
+    padding: 0.65rem 0 0.25rem;
+    border-top: 1px solid var(--border-soft);
+  }
+  .mobile-nav-open .sidebar-footer .version-badge {
+    margin: 0.4rem 0.75rem;
   }
 }
 .container:has(> .app-sidebar) > header {
