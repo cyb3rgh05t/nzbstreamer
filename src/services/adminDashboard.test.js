@@ -42,6 +42,10 @@ function fixture(url) {
   if (url.pathname === "/api/get-overview-stats") {
     return {
       tiles: { activeReads: 2, bytesServedPerMinute: 123, errorsPerMinute: 0 },
+      activeReadsByDay: [
+        { day: "2026-10-28", peak: 3 },
+        { day: "2026-10-29", peak: 5 },
+      ],
       catalogue: { fileCount: 4, totalBytes: 999 },
     };
   }
@@ -109,6 +113,16 @@ test("internal dashboard aggregates and allowlists backend data", async (t) => {
   assert.equal(result.backend.reachable, true);
   assert.equal(result.queue.items[0].percentage, 45);
   assert.equal(result.overview.activeReads, 2);
+  assert.deepEqual(result.overview.activeReadsByDay, [
+    { day: "2026-10-28", peak: 3 },
+    { day: "2026-10-29", peak: 5 },
+  ]);
+  assert.equal(
+    calls
+      .find((url) => url.pathname === "/api/get-overview-stats")
+      .searchParams.get("window"),
+    "30d",
+  );
   assert.equal(result.providers[0].name, "Primary");
   assert.equal(result.errors.length, 0);
   assert.equal(JSON.stringify(result).includes("secret"), false);
@@ -126,6 +140,23 @@ test("external backend only requests SAB-compatible data", async (t) => {
   assert.equal(result.overview, null);
   assert.equal(result.providers, null);
   assert.equal(result.backend.mode, "external");
+});
+
+test("dashboard drops malformed active-read history points", async (t) => {
+  setup(t);
+  t.mock.method(global, "fetch", async (url) => {
+    const data = fixture(url);
+    if (url.pathname === "/api/get-overview-stats") {
+      data.activeReadsByDay = [
+        { day: "2026-10-29", peak: 4 },
+        { day: "2026-02-31", peak: 7 },
+        { day: "2026-10-28", peak: -1 },
+      ];
+    }
+    return Response.json(data);
+  });
+  const result = await getDashboard();
+  assert.deepEqual(result.overview.activeReadsByDay, []);
 });
 
 test("dashboard includes cached service checks even without a configured backend", async (t) => {

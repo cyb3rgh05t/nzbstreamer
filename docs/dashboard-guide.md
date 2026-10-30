@@ -17,10 +17,12 @@ Nach der Anmeldung startet die Admin-Oberflaeche im Dashboard. Die Reihenfolge i
 1. Ueberschrift, Updated-Badge neben Refresh und eventuelle Fehlermeldungen.
 2. Sechs Kennzahlen: Backend, Queued downloads, History items, Active reads,
    Data served / minute und Catalogue files.
-3. Providers und Indexers / Newznab mit Verbindungsstatus; Provider-Verbrauch darunter.
-4. NZBStreamer caches.
-5. Download queue.
-6. Recent history mit Seitenwechsel.
+3. Balkendiagramm mit dem Tagesmaximum der gleichzeitigen ActiveReads; waehlbar
+   sind die letzten 7 oder 30 Tage.
+4. Providers und Indexers / Newznab mit Verbindungsstatus; Provider-Verbrauch darunter.
+5. NZBStreamer caches.
+6. Download queue.
+7. Recent history mit Seitenwechsel.
 
 Das Dashboard startet keine Downloads, setzt keine Providerzaehler zurueck und
 aendert keine Einstellungen. Refresh fragt lediglich die aktuellen Daten erneut
@@ -78,7 +80,8 @@ Dashboard vorgesehenen Felder zurueck.
 | Backend-Modus                         | NZBStreamer          | Zustand des eingebauten Backend-Managers                                          |
 | Queue und Queue-Anzahl                | NZBDav/SAB-API       | `api?mode=queue&output=json&start=0&limit=20`                                     |
 | History und History-Anzahl            | NZBDav/SAB-API       | `api?mode=history&output=json&start=...&limit=10&pageSize=10`                     |
-| Active reads                          | Eingebautes NZBDavEx | `api/get-overview-stats?window=24h`, Feld `tiles.activeReads`                     |
+| Active reads                          | Eingebautes NZBDavEx | `api/get-overview-stats?window=30d`, Feld `tiles.activeReads`                     |
+| Active reads pro Tag                  | Eingebautes NZBDavEx | Gleiche Antwort, Feld `activeReadsByDay`; aus gespeicherten Lesesitzungen         |
 | Data served / minute                  | Eingebautes NZBDavEx | Gleiche Overview-Antwort, Feld `tiles.bytesServedPerMinute`                       |
 | Catalogue files und virtuelle Groesse | Eingebautes NZBDavEx | Gleiche Overview-Antwort, Felder `catalogue.fileCount` und `catalogue.totalBytes` |
 | Provider usage                        | Eingebautes NZBDavEx | `api/get-provider-usage`                                                          |
@@ -168,6 +171,19 @@ Zugangsdaten und ungefilterte API-Antworten werden nicht mitgeschickt.
 Telegram-Linkvorschauen und Discord-Erwaehnungen sind deaktiviert.
 
 ## 3. Die sechs Kennzahlen
+
+### Active reads pro Tag
+
+Das Balkendiagramm zeigt fuer jeden UTC-Kalendertag den hoechsten Wert
+gleichzeitig aktiver WebDAV-Lesesitzungen. Der Zeitraum kann zwischen 7 und 30
+Tagen umgeschaltet werden. Die Daten stammen aus gespeicherten Lesesitzungen und
+dem aktuellen Sitzungsregister; die 15-sekuendige Aktivitaetsfrist wird bei der
+Rekonstruktion beruecksichtigt. Es werden keine Dashboard-Pollwerte summiert.
+
+NZBDavEx behaelt abgeschlossene Lesesitzungen 90 Tage. Das Diagramm zeigt maximal
+30 Tage; nach einer Neuinstallation oder Datenbereinigung koennen fruehere Tage
+des gewaehlten Fensters noch ohne Aktivitaet sein. Die Balken beziehen sich auf
+UTC-Tage, waehrend Uhrzeiten im Dashboard sonst lokal formatiert werden.
 
 ### Backend
 

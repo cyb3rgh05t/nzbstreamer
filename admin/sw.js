@@ -1,4 +1,4 @@
-const CACHE_NAME = "nzbstreamer-admin-v8";
+const CACHE_NAME = "nzbstreamer-admin-v9";
 const ASSETS = [
   "./",
   "./index.html",

@@ -4,6 +4,7 @@ public class GetOverviewStatsResponse
 {
     public string Window { get; init; } = "24h";
     public LiveTiles Tiles { get; init; } = new();
+    public List<ActiveReadsDay> ActiveReadsByDay { get; init; } = new();
     public List<ThroughputPoint> Throughput { get; init; } = new();
     public long TotalArticles { get; init; }
     public long TotalErrors { get; init; }
@@ -36,6 +37,12 @@ public class GetOverviewStatsResponse
         public long Articles { get; init; }
         public long Errors { get; init; }
         public long BytesServed { get; init; }
+    }
+
+    public class ActiveReadsDay
+    {
+        public string Day { get; init; } = "";
+        public int Peak { get; init; }
     }
 
     public class ProviderRow

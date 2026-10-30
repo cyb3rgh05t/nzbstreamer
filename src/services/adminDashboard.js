@@ -57,6 +57,20 @@ function isOverview(data) {
   ].every(Number.isFinite);
 }
 
+function isActiveReadsSeries(series) {
+  return (
+    Array.isArray(series) &&
+    series.every(
+      (item) =>
+        item &&
+        typeof item.day === "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(item.day) &&
+        Number.isSafeInteger(item.peak) &&
+        item.peak >= 0,
+    )
+  );
+}
+
 function isProviderList(data) {
   return (
     Array.isArray(data?.providers) &&
@@ -235,7 +249,7 @@ async function getDashboard({ historyPage = 1, failedOnly = false } = {}) {
   ];
   if (embeddedNzbdav.isEnabled()) {
     requests.push(
-      ["overview", "api/get-overview-stats?window=24h", isOverview],
+      ["overview", "api/get-overview-stats?window=30d", isOverview],
       ["providers", "api/get-provider-usage", isProviderList],
     );
   }
@@ -286,6 +300,9 @@ async function getDashboard({ historyPage = 1, failedOnly = false } = {}) {
     } else if (source === "overview") {
       result.overview = {
         activeReads: data.tiles.activeReads,
+        activeReadsByDay: isActiveReadsSeries(data.activeReadsByDay)
+          ? data.activeReadsByDay.map(({ day, peak }) => ({ day, peak }))
+          : [],
         bytesServedPerMinute: data.tiles.bytesServedPerMinute,
         fileCount: data.catalogue.fileCount,
         totalBytes: data.catalogue.totalBytes,

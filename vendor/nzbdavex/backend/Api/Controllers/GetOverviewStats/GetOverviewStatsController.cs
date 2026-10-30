@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NzbWebDAV.Config;
@@ -22,6 +23,8 @@ public class GetOverviewStatsController(
     private const long OneMinute = 60_000;
     private const long OneHour = 60 * OneMinute;
     private const long OneDay = 24 * OneHour;
+    private const int ActiveReadsHistoryDays = 30;
+    private const long ActiveReadActivityWindowMs = 15_000;
 
     // Log-scale latency buckets in milliseconds. Last bucket is a catch-all up to int.MaxValue.
     private static readonly int[] LatencyBucketEdges =
@@ -62,6 +65,9 @@ public class GetOverviewStatsController(
             .Where(x => x.EndedAt >= windowStart)
             .Select(x => new { x.StartedAt, x.EndedAt, x.DurationMs, x.BytesServed, x.FailoverSaves })
             .ToListAsync().ConfigureAwait(false);
+        var activeReadsByDay = BuildActiveReadsByDay(
+            sessions.Select(session => (session.StartedAt, session.EndedAt)),
+            registry.Snapshot(), nowMs, ActiveReadsHistoryDays);
 
         GetOverviewStatsResponse.LiveTiles liveTiles;
         List<GetOverviewStatsResponse.ThroughputPoint> throughput;
@@ -157,6 +163,7 @@ public class GetOverviewStatsController(
         {
             Window = label,
             Tiles = liveTiles,
+            ActiveReadsByDay = activeReadsByDay,
             Throughput = throughput,
             TotalArticles = totalArticles,
             TotalErrors = totalErrors,
@@ -318,6 +325,74 @@ public class GetOverviewStatsController(
                 })
                 .ToList(),
         };
+    }
+
+    private static List<GetOverviewStatsResponse.ActiveReadsDay> BuildActiveReadsByDay(
+        IEnumerable<(long StartedAt, long EndedAt)> sessions,
+        IReadOnlyList<ActiveReadRegistry.Entry> activeReads,
+        long nowMs,
+        int dayCount)
+    {
+        var sessionIntervals = sessions.ToList();
+        var firstTrackedAt = sessionIntervals.Select(session => session.StartedAt)
+            .Concat(activeReads.Select(entry => entry.StartedAt.ToUnixTimeMilliseconds()))
+            .DefaultIfEmpty(long.MaxValue)
+            .Min();
+        if (firstTrackedAt == long.MaxValue) return new List<GetOverviewStatsResponse.ActiveReadsDay>();
+
+        var windowStart = nowMs - nowMs % OneDay - (dayCount - 1) * OneDay;
+        var firstDay = Math.Max(windowStart, firstTrackedAt - firstTrackedAt % OneDay);
+        var availableDays = (int)((nowMs - nowMs % OneDay - firstDay) / OneDay) + 1;
+        var eventsByDay = new Dictionary<long, List<(long At, int Delta)>>();
+
+        void AddInterval(long startedAt, long endedAt)
+        {
+            var sessionEnd = Math.Min(nowMs, endedAt + ActiveReadActivityWindowMs);
+            if (sessionEnd <= startedAt) return;
+
+            for (var day = firstDay; day <= nowMs; day += OneDay)
+            {
+                var intervalStart = Math.Max(startedAt, day);
+                var intervalEnd = Math.Min(sessionEnd, day + OneDay);
+                if (intervalEnd <= intervalStart) continue;
+
+                if (!eventsByDay.TryGetValue(day, out var events))
+                {
+                    events = new List<(long At, int Delta)>();
+                    eventsByDay[day] = events;
+                }
+                events.Add((intervalStart, 1));
+                events.Add((intervalEnd, -1));
+            }
+        }
+
+        foreach (var (startedAt, endedAt) in sessionIntervals)
+            AddInterval(startedAt, endedAt);
+        foreach (var entry in activeReads)
+            AddInterval(entry.StartedAt.ToUnixTimeMilliseconds(), entry.LastActivityAt.ToUnixTimeMilliseconds());
+
+        return Enumerable.Range(0, availableDays)
+            .Select(index =>
+            {
+                var day = firstDay + index * OneDay;
+                var peak = 0;
+                if (eventsByDay.TryGetValue(day, out var events))
+                {
+                    var active = 0;
+                    foreach (var group in events.GroupBy(item => item.At).OrderBy(group => group.Key))
+                    {
+                        active += group.Sum(item => item.Delta);
+                        peak = Math.Max(peak, active);
+                    }
+                }
+
+                return new GetOverviewStatsResponse.ActiveReadsDay
+                {
+                    Day = DateTimeOffset.FromUnixTimeMilliseconds(day).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    Peak = peak,
+                };
+            })
+            .ToList();
     }
 
     private GetOverviewStatsResponse.LiveTiles BuildLiveTiles(long articlesLastMinute, long errorsLastMinute)

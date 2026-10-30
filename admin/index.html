@@ -85,6 +85,20 @@
         <p id="dashboardStatus" class="hint hidden" role="status" aria-atomic="true"></p>
         <div id="dashboardErrors" role="alert"></div>
         <div id="dashboardTiles" class="dashboard-tiles"></div>
+        <section class="dashboard-block active-reads-block" aria-labelledby="activeReadsChartTitle">
+          <div class="active-reads-heading">
+            <div>
+              <h3 id="activeReadsChartTitle"><i data-lucide="chart-column" aria-hidden="true"></i>Active reads by day</h3>
+              <p class="hint">Daily peak of simultaneous read sessions, reconstructed from recorded activity.</p>
+            </div>
+            <div class="active-reads-range" id="activeReadsRange" role="group" aria-label="Active reads chart range">
+              <button type="button" class="active-reads-range-button" data-active-reads-range="7" aria-pressed="false">7 days</button>
+              <button type="button" class="active-reads-range-button" data-active-reads-range="30" aria-pressed="true">30 days</button>
+            </div>
+          </div>
+          <p id="activeReadsChartSummary" class="active-reads-summary" role="status"></p>
+          <div id="activeReadsChart" class="active-reads-chart"></div>
+        </section>
         <div class="dashboard-columns dashboard-services">
           <section class="dashboard-block"><h3><i data-lucide="activity" aria-hidden="true"></i>Providers</h3><div id="dashboardProviderHealth"></div><div id="dashboardProviders"></div></section>
           <section class="dashboard-block"><h3><i data-lucide="radio-tower" aria-hidden="true"></i>Indexers / Newznab</h3><div id="dashboardIndexerHealth"></div></section>
