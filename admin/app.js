@@ -33,6 +33,16 @@
   let dashboardHistoryAvailable = false;
   let dashboardTimer = null;
   let dashboardLoading = false;
+
+  function resizeStreamNamingDescription() {
+    const textarea = configForm.querySelector(
+      'textarea[name="NZB_NAMING_PATTERN"]',
+    );
+    if (!textarea || textarea.closest("[data-nav-inactive]")) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight + 4}px`;
+  }
+
   const settingsSections = Array.from(
     configForm.querySelectorAll(":scope > section.group"),
   );
@@ -2267,6 +2277,12 @@
         : activeSettingsView
             .querySelector(":scope > h3")
             .firstChild.textContent.trim();
+    if (
+      typeof activeSettingsView === "object" &&
+      activeSettingsView?.dataset.profileSection === "Stream Naming"
+    ) {
+      requestAnimationFrame(resizeStreamNamingDescription);
+    }
   }
 
   async function confirmNavigationWithUnsavedChanges() {
@@ -4326,6 +4342,12 @@
       }
     }
 
+    if (descInput && descInput.dataset.autoResizeBound !== "true") {
+      descInput.dataset.autoResizeBound = "true";
+      descInput.addEventListener("input", resizeStreamNamingDescription);
+    }
+    resizeStreamNamingDescription();
+
     function buildPatternFromTokenList(rawPattern, variant, fallbackPattern) {
       if (rawPattern && rawPattern.includes("{")) return rawPattern;
       const hasLineBreaks = /[\r\n]/.test(String(rawPattern || ""));
@@ -4522,6 +4544,7 @@
   }
 
   // Final Init Call
+  window.addEventListener("resize", resizeStreamNamingDescription);
   setupReleaseExclusions();
   syncHealthControls();
   syncSortingControls();

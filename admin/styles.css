@@ -1358,6 +1358,11 @@ button.ghost.danger:hover {
   background: rgba(8, 16, 26, 0.8);
   margin-top: 0;
 }
+[data-language-selector] .language-checkbox-grid,
+[data-tmdb-language-selector] .language-checkbox-grid {
+  max-height: none;
+  overflow: visible;
+}
 
 .language-checkbox-grid .checkbox {
   padding: 0.45rem 0.6rem;
