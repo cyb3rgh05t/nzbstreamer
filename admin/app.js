@@ -1878,21 +1878,6 @@
       const heading = document.createElement("strong");
       heading.textContent = label;
       caption.appendChild(heading);
-      const legend = document.createElement("ul");
-      legend.className = "active-reads-legend";
-      counts.forEach((count, index) => {
-        if (!count) return;
-        const item = document.createElement("li");
-        const swatch = document.createElement("span");
-        swatch.className = `active-reads-swatch ${levels[index].className}`;
-        swatch.setAttribute("aria-hidden", "true");
-        item.append(
-          swatch,
-          `${levels[index].name}: ${count} ${count === 1 ? "day" : "days"}`,
-        );
-        legend.appendChild(item);
-      });
-      caption.appendChild(legend);
       figure.appendChild(caption);
       chart.appendChild(figure);
     });

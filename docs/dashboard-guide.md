@@ -178,7 +178,7 @@ Drei Donut-Diagramme zeigen den hoechsten Wert gleichzeitig aktiver
 WebDAV-Lesesitzungen fuer heute, die letzten 7 Tage und die gesamte verfuegbare
 Historie. Die Zahl in der Mitte ist der Spitzenwert des Zeitraums; der Ring
 teilt die Tage des Zeitraums nach ihrem Tagesmaximum auf (Idle, 1, 2 oder 3+
-Reads). Die Daten stammen aus gespeicherten Lesesitzungen und
+Reads); die Anzahl der Tage steht im Tooltip des jeweiligen Segments. Die Daten stammen aus gespeicherten Lesesitzungen und
 dem aktuellen Sitzungsregister; die 15-sekuendige Aktivitaetsfrist wird bei der
 Rekonstruktion beruecksichtigt. Es werden keine Dashboard-Pollwerte summiert.
 

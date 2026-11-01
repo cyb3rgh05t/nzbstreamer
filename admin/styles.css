@@ -3926,28 +3926,20 @@ input[type="checkbox"]:disabled {
 .active-reads-donut-segment:hover {
   opacity: 0.8;
 }
-.active-reads-donut-segment.level-0,
-.active-reads-swatch.level-0 {
+.active-reads-donut-segment.level-0 {
   stroke: var(--text-muted);
-  background: var(--text-muted);
   opacity: 0.45;
 }
-.active-reads-donut-segment.level-1,
-.active-reads-swatch.level-1 {
+.active-reads-donut-segment.level-1 {
   stroke: var(--accent);
-  background: var(--accent);
   opacity: 0.45;
 }
-.active-reads-donut-segment.level-2,
-.active-reads-swatch.level-2 {
+.active-reads-donut-segment.level-2 {
   stroke: var(--accent);
-  background: var(--accent);
   opacity: 0.7;
 }
-.active-reads-donut-segment.level-3,
-.active-reads-swatch.level-3 {
+.active-reads-donut-segment.level-3 {
   stroke: var(--accent);
-  background: var(--accent);
   opacity: 1;
 }
 .active-reads-donut-value,
@@ -3968,22 +3960,6 @@ input[type="checkbox"]:disabled {
 .active-reads-donut figcaption {
   text-align: center;
   font-size: 0.85rem;
-}
-.active-reads-legend {
-  display: grid;
-  gap: 0.2rem;
-  margin: 0.35rem 0 0;
-  padding: 0;
-  list-style: none;
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-}
-.active-reads-swatch {
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  margin-right: 0.4rem;
-  border-radius: 50%;
 }
 .dashboard-tile strong {
   display: block;
