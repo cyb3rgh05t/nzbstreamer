@@ -17,10 +17,10 @@ Nach der Anmeldung startet die Admin-Oberflaeche im Dashboard. Die Reihenfolge i
 1. Ueberschrift, Updated-Badge neben Refresh und eventuelle Fehlermeldungen.
 2. Sechs Kennzahlen: Backend, Queued downloads, History items, Active reads,
    Data served / minute und Catalogue files.
-3. Balkendiagramm mit dem Tagesmaximum der gleichzeitigen ActiveReads; waehlbar
-   sind die letzten 7 oder 30 Tage.
-4. Providers und Indexers / Newznab mit Verbindungsstatus; Provider-Verbrauch darunter.
-5. NZBStreamer caches.
+3. Providers und Indexers / Newznab mit Verbindungsstatus; Provider-Verbrauch darunter.
+4. NZBStreamer caches.
+5. Drei Donut-Diagramme (Today, Last 7 days, All time) mit dem Tagesmaximum der
+   gleichzeitigen ActiveReads.
 6. Download queue.
 7. Recent history mit Seitenwechsel.
 
@@ -174,16 +174,18 @@ Telegram-Linkvorschauen und Discord-Erwaehnungen sind deaktiviert.
 
 ### Active reads pro Tag
 
-Das Balkendiagramm zeigt fuer jeden UTC-Kalendertag den hoechsten Wert
-gleichzeitig aktiver WebDAV-Lesesitzungen. Der Zeitraum kann zwischen 7 und 30
-Tagen umgeschaltet werden. Die Daten stammen aus gespeicherten Lesesitzungen und
+Drei Donut-Diagramme zeigen den hoechsten Wert gleichzeitig aktiver
+WebDAV-Lesesitzungen fuer heute, die letzten 7 Tage und die gesamte verfuegbare
+Historie. Die Zahl in der Mitte ist der Spitzenwert des Zeitraums; der Ring
+teilt die Tage des Zeitraums nach ihrem Tagesmaximum auf (Idle, 1, 2 oder 3+
+Reads). Die Daten stammen aus gespeicherten Lesesitzungen und
 dem aktuellen Sitzungsregister; die 15-sekuendige Aktivitaetsfrist wird bei der
 Rekonstruktion beruecksichtigt. Es werden keine Dashboard-Pollwerte summiert.
 
-NZBDavEx behaelt abgeschlossene Lesesitzungen 90 Tage. Das Diagramm zeigt maximal
-30 Tage; nach einer Neuinstallation oder Datenbereinigung koennen fruehere Tage
-des gewaehlten Fensters noch ohne Aktivitaet sein. Die Balken beziehen sich auf
-UTC-Tage, waehrend Uhrzeiten im Dashboard sonst lokal formatiert werden.
+NZBDavEx behaelt abgeschlossene Lesesitzungen 90 Tage. Die Historie liefert
+maximal 30 Tage, daher umfasst „All time“ hoechstens diese 30 Tage; nach einer
+Neuinstallation oder Datenbereinigung ist sie kuerzer. Alle Zeitraeume beziehen
+sich auf UTC-Tage, waehrend Uhrzeiten im Dashboard sonst lokal formatiert werden.
 
 ### Backend
 

@@ -25,8 +25,6 @@
     "dashboardHistoryActionStatus",
   );
   let dashboardHistoryClearing = false;
-  let activeReadsRange = 30;
-  let activeReadsHistory = [];
   let dashboardFailedOnly = false;
   let dashboardHistoryPage = 1;
   let dashboardHistoryPages = 1;
@@ -1783,106 +1781,121 @@
   function renderActiveReadsChart(series) {
     const chart = document.getElementById("activeReadsChart");
     const summary = document.getElementById("activeReadsChartSummary");
-    const days = series.slice(-activeReadsRange);
     chart.replaceChildren();
-    document.querySelectorAll("[data-active-reads-range]").forEach((button) => {
-      button.setAttribute(
-        "aria-pressed",
-        String(Number(button.dataset.activeReadsRange) === activeReadsRange),
-      );
-    });
-    if (!days.length) {
+    if (!series.length) {
       summary.textContent =
         "No recorded read-session history is available yet.";
       return;
     }
 
-    const peak = Math.max(0, ...days.map((day) => day.peak));
     const dateLabel = new Intl.DateTimeFormat(undefined, {
       month: "short",
       day: "numeric",
       timeZone: "UTC",
     });
-    const coverage =
-      days.length < activeReadsRange
-        ? ` · History available since ${dateLabel.format(new Date(`${days[0].day}T00:00:00Z`))}`
-        : "";
-    summary.textContent =
-      peak > 0
-        ? `Peak: ${peak} simultaneous ${peak === 1 ? "read" : "reads"} in the last ${activeReadsRange} days${coverage}`
-        : `No active reads recorded in the last ${activeReadsRange} days${coverage}`;
+    summary.textContent = `History available since ${dateLabel.format(new Date(`${series[0].day}T00:00:00Z`))}`;
 
     const namespace = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(namespace, "svg");
-    svg.setAttribute("viewBox", "0 0 720 250");
-    svg.setAttribute("role", "img");
-    svg.setAttribute(
-      "aria-label",
-      `Daily peak active reads for the last ${activeReadsRange} days. Highest value: ${peak}.`,
-    );
-    const title = document.createElementNS(namespace, "title");
-    title.textContent = `Daily peak active reads, last ${activeReadsRange} days`;
-    svg.appendChild(title);
+    const radius = 52;
+    const circumference = 2 * Math.PI * radius;
+    const levels = [
+      { name: "Idle", className: "level-0", matches: (peak) => peak === 0 },
+      { name: "1 read", className: "level-1", matches: (peak) => peak === 1 },
+      { name: "2 reads", className: "level-2", matches: (peak) => peak === 2 },
+      { name: "3+ reads", className: "level-3", matches: (peak) => peak >= 3 },
+    ];
+    const periods = [
+      { label: "Today", days: series.slice(-1) },
+      { label: "Last 7 days", days: series.slice(-7) },
+      { label: "All time", days: series },
+    ];
 
-    const plot = { left: 48, right: 12, top: 14, bottom: 38 };
-    const width = 720 - plot.left - plot.right;
-    const height = 250 - plot.top - plot.bottom;
-    const tickCount = peak > 0 ? Math.min(4, peak) : 1;
-    for (let tick = 0; tick <= tickCount; tick += 1) {
-      const value = Math.ceil((peak * tick) / tickCount);
-      const y = plot.top + height - (value / Math.max(1, peak)) * height;
-      const grid = document.createElementNS(namespace, "line");
-      grid.setAttribute("x1", String(plot.left));
-      grid.setAttribute("x2", String(720 - plot.right));
-      grid.setAttribute("y1", String(y));
-      grid.setAttribute("y2", String(y));
-      grid.setAttribute("class", "active-reads-gridline");
-      svg.appendChild(grid);
-      const label = document.createElementNS(namespace, "text");
-      label.setAttribute("x", String(plot.left - 10));
-      label.setAttribute("y", String(y + 4));
-      label.setAttribute("text-anchor", "end");
-      label.setAttribute("class", "active-reads-axis-label");
-      label.textContent = String(value);
-      svg.appendChild(label);
-    }
-
-    const slot = width / days.length;
-    const barWidth = Math.max(3, Math.min(28, slot * 0.62));
-    days.forEach((day, index) => {
-      const value = Math.max(0, day.peak);
-      const barHeight = (value / Math.max(1, peak)) * height;
-      const bar = document.createElementNS(namespace, "rect");
-      bar.setAttribute(
-        "x",
-        String(plot.left + slot * index + (slot - barWidth) / 2),
+    periods.forEach(({ label, days }) => {
+      const peak = Math.max(0, ...days.map((day) => day.peak));
+      const counts = levels.map(
+        (level) => days.filter((day) => level.matches(day.peak)).length,
       );
-      bar.setAttribute("y", String(plot.top + height - barHeight));
-      bar.setAttribute("width", String(barWidth));
-      bar.setAttribute(
-        "height",
-        String(Math.max(value > 0 ? 2 : 0, barHeight)),
-      );
-      bar.setAttribute("rx", "2");
-      bar.setAttribute("class", "active-reads-bar");
-      const barTitle = document.createElementNS(namespace, "title");
-      barTitle.textContent = `${day.day}: ${value} ${value === 1 ? "active read" : "active reads"}`;
-      bar.appendChild(barTitle);
-      svg.appendChild(bar);
+      const peakText = `${peak} ${peak === 1 ? "read" : "reads"}`;
 
-      const showLabel =
-        activeReadsRange === 7 || index % 5 === 0 || index === days.length - 1;
-      if (showLabel) {
-        const label = document.createElementNS(namespace, "text");
-        label.setAttribute("x", String(plot.left + slot * index + slot / 2));
-        label.setAttribute("y", String(250 - 12));
-        label.setAttribute("text-anchor", "middle");
-        label.setAttribute("class", "active-reads-axis-label");
-        label.textContent = dateLabel.format(new Date(`${day.day}T00:00:00Z`));
-        svg.appendChild(label);
-      }
+      const figure = document.createElement("figure");
+      figure.className = "active-reads-donut";
+      const svg = document.createElementNS(namespace, "svg");
+      svg.setAttribute("viewBox", "0 0 140 140");
+      svg.setAttribute("role", "img");
+      svg.setAttribute(
+        "aria-label",
+        `${label}: peak of ${peakText} simultaneously, across ${days.length} ${days.length === 1 ? "day" : "days"}.`,
+      );
+
+      const track = document.createElementNS(namespace, "circle");
+      track.setAttribute("cx", "70");
+      track.setAttribute("cy", "70");
+      track.setAttribute("r", String(radius));
+      track.setAttribute("class", "active-reads-donut-track");
+      svg.appendChild(track);
+
+      let offset = 0;
+      counts.forEach((count, index) => {
+        if (!count) return;
+        const length = (count / days.length) * circumference;
+        const segment = document.createElementNS(namespace, "circle");
+        segment.setAttribute("cx", "70");
+        segment.setAttribute("cy", "70");
+        segment.setAttribute("r", String(radius));
+        segment.setAttribute(
+          "class",
+          `active-reads-donut-segment ${levels[index].className}`,
+        );
+        segment.setAttribute(
+          "stroke-dasharray",
+          `${length} ${circumference - length}`,
+        );
+        segment.setAttribute("stroke-dashoffset", String(-offset));
+        const segmentTitle = document.createElementNS(namespace, "title");
+        segmentTitle.textContent = `${levels[index].name}: ${count} ${count === 1 ? "day" : "days"}`;
+        segment.appendChild(segmentTitle);
+        svg.appendChild(segment);
+        offset += length;
+      });
+
+      const value = document.createElementNS(namespace, "text");
+      value.setAttribute("x", "70");
+      value.setAttribute("y", "76");
+      value.setAttribute("text-anchor", "middle");
+      value.setAttribute("class", "active-reads-donut-value");
+      value.textContent = String(peak);
+      svg.appendChild(value);
+      const unit = document.createElementNS(namespace, "text");
+      unit.setAttribute("x", "70");
+      unit.setAttribute("y", "92");
+      unit.setAttribute("text-anchor", "middle");
+      unit.setAttribute("class", "active-reads-donut-unit");
+      unit.textContent = "peak";
+      svg.appendChild(unit);
+      figure.appendChild(svg);
+
+      const caption = document.createElement("figcaption");
+      const heading = document.createElement("strong");
+      heading.textContent = label;
+      caption.appendChild(heading);
+      const legend = document.createElement("ul");
+      legend.className = "active-reads-legend";
+      counts.forEach((count, index) => {
+        if (!count) return;
+        const item = document.createElement("li");
+        const swatch = document.createElement("span");
+        swatch.className = `active-reads-swatch ${levels[index].className}`;
+        swatch.setAttribute("aria-hidden", "true");
+        item.append(
+          swatch,
+          `${levels[index].name}: ${count} ${count === 1 ? "day" : "days"}`,
+        );
+        legend.appendChild(item);
+      });
+      caption.appendChild(legend);
+      figure.appendChild(caption);
+      chart.appendChild(figure);
     });
-    chart.appendChild(svg);
   }
 
   function dashboardTile(label, value, detail) {
@@ -2048,8 +2061,7 @@
               : null,
           ),
         );
-      activeReadsHistory = data.overview?.activeReadsByDay ?? [];
-      renderActiveReadsChart(activeReadsHistory);
+      renderActiveReadsChart(data.overview?.activeReadsByDay ?? []);
       renderDashboardList("dashboardQueue", data.queue?.items ?? null, true);
       renderDashboardList("dashboardHistory", data.history?.items ?? null);
       dashboardHistoryAvailable = data.history !== null;
@@ -2173,14 +2185,6 @@
   }
 
   refreshDashboardButton.addEventListener("click", () => loadDashboard());
-  document
-    .getElementById("activeReadsRange")
-    .addEventListener("click", (event) => {
-      const button = event.target.closest("[data-active-reads-range]");
-      if (!button) return;
-      activeReadsRange = Number(button.dataset.activeReadsRange) === 7 ? 7 : 30;
-      renderActiveReadsChart(activeReadsHistory);
-    });
   historyPreviousButton.addEventListener("click", () =>
     loadDashboard(dashboardHistoryPage - 1),
   );
