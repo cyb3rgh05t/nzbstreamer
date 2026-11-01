@@ -1,6 +1,7 @@
 // Parsing utilities for releases, episodes, and titles
 const path = require('path');
 const { VIDEO_EXTENSIONS } = require('../config/constants');
+const { parseTorrentTitle } = require('./lib/parse-torrent-title/index.js');
 
 const posixPath = path.posix;
 
@@ -66,7 +67,21 @@ function fileMatchesEpisode(fileName, requestedEpisode) {
     `s${String(s).padStart(2, '0')}e${String(e).padStart(2, '0')}`,
     `${s}x${String(e).padStart(2, '0')}`,
   ];
-  return patterns.some((pattern) => lower.includes(pattern));
+  if (patterns.some((pattern) => lower.includes(pattern))) return true;
+
+  // Season packs contain many episodes, so also understand S01E5, S01.E05,
+  // "Season 1 Episode 5" and multi-episode files such as S01E05E06 / S01E05-E06.
+  try {
+    const parsed = parseTorrentTitle(fileName);
+    return (
+      Array.isArray(parsed?.seasons) &&
+      Array.isArray(parsed?.episodes) &&
+      parsed.seasons.includes(s) &&
+      parsed.episodes.includes(e)
+    );
+  } catch (_) {
+    return false;
+  }
 }
 
 function normalizeNzbdavPath(pathValue) {

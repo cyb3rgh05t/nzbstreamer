@@ -112,6 +112,7 @@ const {
 } = require("./src/utils/publishInfo");
 const {
   parseReleaseMetadata,
+  releaseMatchesEpisode,
   LANGUAGE_FILTERS,
   LANGUAGE_SYNONYMS,
   QUALITY_FEATURE_PATTERNS,
@@ -3899,8 +3900,7 @@ async function streamHandler(req, res) {
               ? item
               : annotateNzbResult(item, 0);
           if (
-            Number(annotated?.season) !== Number(seasonNum) ||
-            Number(annotated?.episode) !== Number(episodeNum)
+            !releaseMatchesEpisode(annotated, Number(seasonNum), Number(episodeNum))
           )
             return false;
         }
@@ -3992,8 +3992,8 @@ async function streamHandler(req, res) {
           Number.isFinite(episodeNum)
         ) {
           if (
-            !Number.isFinite(annotated?.season) ||
-            !Number.isFinite(annotated?.episode)
+            !Number.isFinite(annotated?.season) &&
+            !annotated?.complete
           ) {
             if (isNewznabDebugEnabled()) {
               console.log(
@@ -4009,8 +4009,7 @@ async function streamHandler(req, res) {
             return false;
           }
           if (
-            Number(annotated.season) !== Number(seasonNum) ||
-            Number(annotated.episode) !== Number(episodeNum)
+            !releaseMatchesEpisode(annotated, Number(seasonNum), Number(episodeNum))
           ) {
             if (isNewznabDebugEnabled()) {
               console.log(
@@ -4019,6 +4018,8 @@ async function streamHandler(req, res) {
                   title: candidateTitle,
                   season: annotated?.season ?? null,
                   episode: annotated?.episode ?? null,
+                  seasons: annotated?.seasons ?? null,
+                  episodes: annotated?.episodes ?? null,
                   expectedSeason: seasonNum,
                   expectedEpisode: episodeNum,
                   query: plan.query,

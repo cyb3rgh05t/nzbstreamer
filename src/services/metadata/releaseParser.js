@@ -289,6 +289,44 @@ function buildLanguagePattern(token) {
  * @property {string[]} [visualTags]
  */
 
+const SEASON_WORD_PATTERN = /\bstaffel[\s._-]*(\d{1,2})\b/gi;
+
+// The title parser knows season / saison / temporada / stagione but not the
+// German "Staffel", which otherwise ends up inside the parsed title.
+function normalizeSeasonWords(title) {
+  return title.replace(
+    SEASON_WORD_PATTERN,
+    (_, season) => `S${season.padStart(2, '0')}`,
+  );
+}
+
+function toNumberList(value) {
+  return Array.isArray(value)
+    ? value.map(Number).filter((entry) => Number.isFinite(entry))
+    : [];
+}
+
+/**
+ * Decides whether a parsed release can contain the requested episode.
+ * Season packs (season(s) without episodes) and complete-series packs match
+ * every episode of their seasons; multi-episode releases match each episode
+ * they cover.
+ * @param {{season?: number|null, episode?: number|null, seasons?: number[], episodes?: number[], complete?: boolean}} meta
+ * @param {number} season
+ * @param {number} episode
+ */
+function releaseMatchesEpisode(meta, season, episode) {
+  const seasons = toNumberList(meta?.seasons);
+  const episodes = toNumberList(meta?.episodes);
+  if (seasons.length === 0 && Number.isFinite(meta?.season)) seasons.push(meta.season);
+  if (episodes.length === 0 && Number.isFinite(meta?.episode)) episodes.push(meta.episode);
+
+  if (seasons.length === 0) return Boolean(meta?.complete) && episodes.length === 0;
+  if (!seasons.includes(Number(season))) return false;
+  if (episodes.length === 0) return true;
+  return episodes.includes(Number(episode));
+}
+
 /**
  * Parses release title using @viren070/parse-torrent-title
  * @param {string} title
@@ -300,7 +338,7 @@ function parseReleaseMetadata(title) {
   /** @type {ParsedResult} */
   const parsed = (() => {
     try {
-      return parseTorrentTitle(rawTitle) || {};
+      return parseTorrentTitle(normalizeSeasonWords(rawTitle)) || {};
     } catch (error) {
       return {};
     }
@@ -311,12 +349,21 @@ function parseReleaseMetadata(title) {
   const qualityScore = QUALITY_SCORE_MAP[String(resolution || '').toLowerCase()] || 0;
   const parsedTitle = parsed.title || null;
   const parsedYear = parsed.year ? parseInt(parsed.year, 10) || null : null;
-  const parsedSeason = Array.isArray(parsed.seasons) ? parsed.seasons[0] || null : null;
-  const parsedEpisode = Array.isArray(parsed.episodes) ? parsed.episodes[0] || null : null;
+  const parsedSeasons = toNumberList(parsed.seasons);
+  const parsedEpisodes = toNumberList(parsed.episodes);
+  const parsedSeason = parsedSeasons[0] || null;
+  const parsedEpisode = parsedEpisodes[0] || null;
+  const isSeasonPack = parsedSeasons.length > 0 && parsedEpisodes.length === 0;
   let parsedTitleDisplay = parsedTitle;
   if (parsedTitle) {
     if (Number.isFinite(parsedSeason) && Number.isFinite(parsedEpisode)) {
       parsedTitleDisplay = `${parsedTitle} S${String(parsedSeason).padStart(2, '0')}E${String(parsedEpisode).padStart(2, '0')}`;
+    } else if (isSeasonPack) {
+      const last = parsedSeasons[parsedSeasons.length - 1];
+      const range = last !== parsedSeason
+        ? `S${String(parsedSeason).padStart(2, '0')}-S${String(last).padStart(2, '0')}`
+        : `S${String(parsedSeason).padStart(2, '0')}`;
+      parsedTitleDisplay = `${parsedTitle} ${range}`;
     } else if (Number.isFinite(parsedYear)) {
       parsedTitleDisplay = `${parsedTitle} ${parsedYear}`;
     }
@@ -382,6 +429,9 @@ function parseReleaseMetadata(title) {
     group: parsed.group || null,
     season: parsedSeason,
     episode: parsedEpisode,
+    seasons: parsedSeasons,
+    episodes: parsedEpisodes,
+    isSeasonPack,
     year: parsedYear,
     complete: parsed.complete || false,
     proper: parsed.proper || false,
@@ -424,4 +474,5 @@ module.exports = {
   META_LANGUAGES,
   QUALITY_FEATURE_PATTERNS,
   parseReleaseMetadata,
+  releaseMatchesEpisode,
 };
