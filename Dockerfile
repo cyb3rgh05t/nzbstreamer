@@ -19,7 +19,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine
 WORKDIR /usr/src/app
 
 # Patch Alpine system packages (openssl etc.)
-RUN apk upgrade --no-cache && apk add --no-cache nodejs npm
+RUN apk upgrade --no-cache && apk add --no-cache nodejs npm tzdata
 
 # Install dependencies
 COPY package*.json ./

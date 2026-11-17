@@ -3961,6 +3961,49 @@ input[type="checkbox"]:disabled {
   text-align: center;
   font-size: 0.85rem;
 }
+.active-reads-coverage {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+.active-reads-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.75rem;
+  width: min(100%, 230px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+.active-reads-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.active-reads-swatch {
+  flex: 0 0 9px;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.active-reads-swatch.level-0 {
+  background: var(--text-muted);
+  opacity: 0.45;
+}
+.active-reads-swatch.level-1 {
+  opacity: 0.45;
+}
+.active-reads-swatch.level-2 {
+  opacity: 0.7;
+}
+.active-reads-swatch.level-3 {
+  opacity: 1;
+}
 .dashboard-tile strong {
   display: block;
   margin-top: 0.5rem;

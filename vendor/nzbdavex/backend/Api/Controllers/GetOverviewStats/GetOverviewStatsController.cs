@@ -65,9 +65,16 @@ public class GetOverviewStatsController(
             .Where(x => x.EndedAt >= windowStart)
             .Select(x => new { x.StartedAt, x.EndedAt, x.DurationMs, x.BytesServed, x.FailoverSaves })
             .ToListAsync().ConfigureAwait(false);
+        var localZone = TimeZoneInfo.Local;
+        var today = TimeZoneInfo.ConvertTime(DateTimeOffset.FromUnixTimeMilliseconds(nowMs), localZone).Date;
+        var historyStart = LocalDayStart(today.AddDays(-(ActiveReadsHistoryDays - 1)), localZone);
+        var readHistory = await metrics.ReadSessions
+            .Where(x => x.EndedAt >= historyStart - ActiveReadActivityWindowMs)
+            .Select(x => new { x.StartedAt, x.EndedAt })
+            .ToListAsync().ConfigureAwait(false);
         var activeReadsByDay = BuildActiveReadsByDay(
-            sessions.Select(session => (session.StartedAt, session.EndedAt)),
-            registry.Snapshot(), nowMs, ActiveReadsHistoryDays);
+            readHistory.Select(session => (session.StartedAt, session.EndedAt)),
+            registry.Snapshot(), nowMs, ActiveReadsHistoryDays, localZone);
 
         GetOverviewStatsResponse.LiveTiles liveTiles;
         List<GetOverviewStatsResponse.ThroughputPoint> throughput;
@@ -164,6 +171,7 @@ public class GetOverviewStatsController(
             Window = label,
             Tiles = liveTiles,
             ActiveReadsByDay = activeReadsByDay,
+            ActiveReadsTimeZone = localZone.Id,
             Throughput = throughput,
             TotalArticles = totalArticles,
             TotalErrors = totalErrors,
@@ -327,11 +335,22 @@ public class GetOverviewStatsController(
         };
     }
 
+    private static long LocalDayStart(DateTime date, TimeZoneInfo zone)
+    {
+        var local = DateTime.SpecifyKind(date.Date, DateTimeKind.Unspecified);
+        while (zone.IsInvalidTime(local)) local = local.AddMinutes(1);
+        var offset = zone.IsAmbiguousTime(local)
+            ? zone.GetAmbiguousTimeOffsets(local).Max()
+            : zone.GetUtcOffset(local);
+        return new DateTimeOffset(local, offset).ToUnixTimeMilliseconds();
+    }
+
     private static List<GetOverviewStatsResponse.ActiveReadsDay> BuildActiveReadsByDay(
         IEnumerable<(long StartedAt, long EndedAt)> sessions,
         IReadOnlyList<ActiveReadRegistry.Entry> activeReads,
         long nowMs,
-        int dayCount)
+        int dayCount,
+        TimeZoneInfo zone)
     {
         var sessionIntervals = sessions.ToList();
         var firstTrackedAt = sessionIntervals.Select(session => session.StartedAt)
@@ -340,20 +359,24 @@ public class GetOverviewStatsController(
             .Min();
         if (firstTrackedAt == long.MaxValue) return new List<GetOverviewStatsResponse.ActiveReadsDay>();
 
-        var windowStart = nowMs - nowMs % OneDay - (dayCount - 1) * OneDay;
-        var firstDay = Math.Max(windowStart, firstTrackedAt - firstTrackedAt % OneDay);
-        var availableDays = (int)((nowMs - nowMs % OneDay - firstDay) / OneDay) + 1;
-        var eventsByDay = new Dictionary<long, List<(long At, int Delta)>>();
+        var today = TimeZoneInfo.ConvertTime(DateTimeOffset.FromUnixTimeMilliseconds(nowMs), zone).Date;
+        var firstTrackedDay = TimeZoneInfo.ConvertTime(DateTimeOffset.FromUnixTimeMilliseconds(firstTrackedAt), zone).Date;
+        var windowStart = today.AddDays(-(dayCount - 1));
+        var firstDay = firstTrackedDay > windowStart ? firstTrackedDay : windowStart;
+        if (firstDay > today) return new List<GetOverviewStatsResponse.ActiveReadsDay>();
+        var availableDays = (today - firstDay).Days + 1;
+        var days = Enumerable.Range(0, availableDays).Select(index => firstDay.AddDays(index)).ToList();
+        var eventsByDay = new Dictionary<DateTime, List<(long At, int Delta)>>();
 
         void AddInterval(long startedAt, long endedAt)
         {
             var sessionEnd = Math.Min(nowMs, endedAt + ActiveReadActivityWindowMs);
             if (sessionEnd <= startedAt) return;
 
-            for (var day = firstDay; day <= nowMs; day += OneDay)
+            foreach (var day in days)
             {
-                var intervalStart = Math.Max(startedAt, day);
-                var intervalEnd = Math.Min(sessionEnd, day + OneDay);
+                var intervalStart = Math.Max(startedAt, LocalDayStart(day, zone));
+                var intervalEnd = Math.Min(sessionEnd, LocalDayStart(day.AddDays(1), zone));
                 if (intervalEnd <= intervalStart) continue;
 
                 if (!eventsByDay.TryGetValue(day, out var events))
@@ -371,10 +394,8 @@ public class GetOverviewStatsController(
         foreach (var entry in activeReads)
             AddInterval(entry.StartedAt.ToUnixTimeMilliseconds(), entry.LastActivityAt.ToUnixTimeMilliseconds());
 
-        return Enumerable.Range(0, availableDays)
-            .Select(index =>
+        return days.Select(day =>
             {
-                var day = firstDay + index * OneDay;
                 var peak = 0;
                 if (eventsByDay.TryGetValue(day, out var events))
                 {
@@ -388,7 +409,7 @@ public class GetOverviewStatsController(
 
                 return new GetOverviewStatsResponse.ActiveReadsDay
                 {
-                    Day = DateTimeOffset.FromUnixTimeMilliseconds(day).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    Day = day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                     Peak = peak,
                 };
             })

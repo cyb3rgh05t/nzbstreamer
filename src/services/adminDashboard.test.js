@@ -46,6 +46,7 @@ function fixture(url) {
         { day: "2026-10-28", peak: 3 },
         { day: "2026-10-29", peak: 5 },
       ],
+      activeReadsTimeZone: "Europe/Berlin",
       catalogue: { fileCount: 4, totalBytes: 999 },
     };
   }
@@ -113,6 +114,7 @@ test("internal dashboard aggregates and allowlists backend data", async (t) => {
   assert.equal(result.backend.reachable, true);
   assert.equal(result.queue.items[0].percentage, 45);
   assert.equal(result.overview.activeReads, 2);
+  assert.equal(result.overview.activeReadsTimeZone, "Europe/Berlin");
   assert.deepEqual(result.overview.activeReadsByDay, [
     { day: "2026-10-28", peak: 3 },
     { day: "2026-10-29", peak: 5 },

@@ -1778,7 +1778,7 @@
     return `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${units[unit]}`;
   }
 
-  function renderActiveReadsChart(series) {
+  function renderActiveReadsChart(series, timeZone) {
     const chart = document.getElementById("activeReadsChart");
     const summary = document.getElementById("activeReadsChartSummary");
     chart.replaceChildren();
@@ -1793,21 +1793,21 @@
       day: "numeric",
       timeZone: "UTC",
     });
-    summary.textContent = `History available since ${dateLabel.format(new Date(`${series[0].day}T00:00:00Z`))}`;
+    summary.textContent = `History since ${dateLabel.format(new Date(`${series[0].day}T00:00:00Z`))} | Time zone: ${timeZone || "UTC (legacy backend)"}`;
 
     const namespace = "http://www.w3.org/2000/svg";
     const radius = 52;
     const circumference = 2 * Math.PI * radius;
     const levels = [
-      { name: "Idle", className: "level-0", matches: (peak) => peak === 0 },
-      { name: "1 read", className: "level-1", matches: (peak) => peak === 1 },
-      { name: "2 reads", className: "level-2", matches: (peak) => peak === 2 },
-      { name: "3+ reads", className: "level-3", matches: (peak) => peak >= 3 },
+      { name: "No reads", className: "level-0", matches: (peak) => peak === 0 },
+      { name: "Peak 1", className: "level-1", matches: (peak) => peak === 1 },
+      { name: "Peak 2", className: "level-2", matches: (peak) => peak === 2 },
+      { name: "Peak 3+", className: "level-3", matches: (peak) => peak >= 3 },
     ];
     const periods = [
       { label: "Today", days: series.slice(-1) },
       { label: "Last 7 days", days: series.slice(-7) },
-      { label: "All time", days: series },
+      { label: "Last 30 days", days: series.slice(-30) },
     ];
 
     periods.forEach(({ label, days }) => {
@@ -1878,7 +1878,24 @@
       const heading = document.createElement("strong");
       heading.textContent = label;
       caption.appendChild(heading);
+      const coverage = document.createElement("span");
+      coverage.className = "active-reads-coverage";
+      coverage.textContent = `${days.length} ${days.length === 1 ? "day" : "days"} recorded`;
+      caption.appendChild(coverage);
       figure.appendChild(caption);
+      const legend = document.createElement("ul");
+      legend.className = "active-reads-legend";
+      levels.forEach((level, index) => {
+        const row = document.createElement("li");
+        const swatch = document.createElement("span");
+        swatch.className = `active-reads-swatch ${level.className}`;
+        swatch.setAttribute("aria-hidden", "true");
+        const text = document.createElement("span");
+        text.textContent = `${level.name}: ${counts[index]} ${counts[index] === 1 ? "day" : "days"}`;
+        row.append(swatch, text);
+        legend.appendChild(row);
+      });
+      figure.appendChild(legend);
       chart.appendChild(figure);
     });
   }
@@ -2051,7 +2068,10 @@
               : null,
           ),
         );
-      renderActiveReadsChart(data.overview?.activeReadsByDay ?? []);
+      renderActiveReadsChart(
+        data.overview?.activeReadsByDay ?? [],
+        data.overview?.activeReadsTimeZone,
+      );
       renderDashboardList("dashboardQueue", data.queue?.items ?? null, true);
       renderDashboardList("dashboardHistory", data.history?.items ?? null);
       dashboardHistoryAvailable = data.history !== null;

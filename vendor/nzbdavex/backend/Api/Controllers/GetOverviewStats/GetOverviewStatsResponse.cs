@@ -5,6 +5,7 @@ public class GetOverviewStatsResponse
     public string Window { get; init; } = "24h";
     public LiveTiles Tiles { get; init; } = new();
     public List<ActiveReadsDay> ActiveReadsByDay { get; init; } = new();
+    public string ActiveReadsTimeZone { get; init; } = "UTC";
     public List<ThroughputPoint> Throughput { get; init; } = new();
     public long TotalArticles { get; init; }
     public long TotalErrors { get; init; }

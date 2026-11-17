@@ -19,7 +19,7 @@ Nach der Anmeldung startet die Admin-Oberflaeche im Dashboard. Die Reihenfolge i
    Data served / minute und Catalogue files.
 3. Providers und Indexers / Newznab mit Verbindungsstatus; Provider-Verbrauch darunter.
 4. NZBStreamer caches.
-5. Drei Donut-Diagramme (Today, Last 7 days, All time) mit dem Tagesmaximum der
+5. Drei Donut-Diagramme (Today, Last 7 days, Last 30 days) mit dem Tagesmaximum der
    gleichzeitigen ActiveReads.
 6. Download queue.
 7. Recent history mit Seitenwechsel.
@@ -181,17 +181,20 @@ Telegram-Linkvorschauen und Discord-Erwaehnungen sind deaktiviert.
 ### Active reads pro Tag
 
 Drei Donut-Diagramme zeigen den hoechsten Wert gleichzeitig aktiver
-WebDAV-Lesesitzungen fuer heute, die letzten 7 Tage und die gesamte verfuegbare
-Historie. Die Zahl in der Mitte ist der Spitzenwert des Zeitraums; der Ring
-teilt die Tage des Zeitraums nach ihrem Tagesmaximum auf (Idle, 1, 2 oder 3+
-Reads); die Anzahl der Tage steht im Tooltip des jeweiligen Segments. Die Daten stammen aus gespeicherten Lesesitzungen und
+WebDAV-Lesesitzungen fuer heute, die letzten 7 und die letzten 30 Tage.
+Die Zahl in der Mitte ist der Spitzenwert des Zeitraums; der Ring teilt die
+erfassten Tage nach ihrem Tagesmaximum auf (keine, 1, 2 oder 3+ Reads). Die
+Legende unter jedem Ring zeigt die Anzahl der Tage je Kategorie. Die Daten stammen aus gespeicherten Lesesitzungen und
 dem aktuellen Sitzungsregister; die 15-sekuendige Aktivitaetsfrist wird bei der
 Rekonstruktion beruecksichtigt. Es werden keine Dashboard-Pollwerte summiert.
 
 NZBDavEx behaelt abgeschlossene Lesesitzungen 90 Tage. Die Historie liefert
-maximal 30 Tage, daher umfasst „All time“ hoechstens diese 30 Tage; nach einer
-Neuinstallation oder Datenbereinigung ist sie kuerzer. Alle Zeitraeume beziehen
-sich auf UTC-Tage, waehrend Uhrzeiten im Dashboard sonst lokal formatiert werden.
+maximal 30 Tage; nach einer Neuinstallation oder Datenbereinigung ist sie
+kuerzer. Die Tagesgrenzen richten sich nach der Zeitzone des eingebauten
+NZBDavEx-Backends und beruecksichtigen Sommerzeit. Im Docker-Container kann
+sie beispielsweise mit `TZ=Europe/Berlin` eingestellt werden; ohne passende
+Konfiguration kann der Container UTC verwenden. Die aktive Zeitzone steht
+oberhalb der Diagramme. Mit aelteren Backends bleiben die Tage in UTC.
 
 ### Backend
 

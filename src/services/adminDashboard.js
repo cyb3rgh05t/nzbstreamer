@@ -310,6 +310,12 @@ async function getDashboard({
         activeReadsByDay: isActiveReadsSeries(data.activeReadsByDay)
           ? data.activeReadsByDay.map(({ day, peak }) => ({ day, peak }))
           : [],
+        activeReadsTimeZone:
+          typeof data.activeReadsTimeZone === "string" &&
+          data.activeReadsTimeZone.length > 0 &&
+          data.activeReadsTimeZone.length <= 100
+            ? data.activeReadsTimeZone
+            : null,
         bytesServedPerMinute: data.tiles.bytesServedPerMinute,
         fileCount: data.catalogue.fileCount,
         totalBytes: data.catalogue.totalBytes,
