@@ -201,9 +201,15 @@ async function clearHistory() {
   }
 }
 
-async function getDashboard({ historyPage = 1, failedOnly = false } = {}) {
+async function getDashboard({
+  historyPage = 1,
+  failedOnly = false,
+  refreshChecks = false,
+} = {}) {
   if (typeof failedOnly !== "boolean")
     throw new TypeError("failedOnly must be a boolean.");
+  if (typeof refreshChecks !== "boolean")
+    throw new TypeError("refreshChecks must be a boolean.");
   if (
     !Number.isSafeInteger(historyPage) ||
     historyPage < 1 ||
@@ -214,6 +220,7 @@ async function getDashboard({ historyPage = 1, failedOnly = false } = {}) {
       "historyPage must be a positive page number within the supported range.",
     );
   }
+  if (refreshChecks) await healthMonitor.checkNow();
   const stats = cache.getAllCacheStats();
   const connection = embeddedNzbdav.getConnectionConfig();
   const { cacheDir, ...disk } = stats.disk;

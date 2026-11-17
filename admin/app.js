@@ -1985,7 +1985,10 @@
     historyClearButton.disabled = busy;
   }
 
-  async function loadDashboard(requestedPage = dashboardHistoryPage) {
+  async function loadDashboard(
+    requestedPage = dashboardHistoryPage,
+    refreshChecks = false,
+  ) {
     if (
       dashboardLoading ||
       dashboardHistoryClearing ||
@@ -1997,13 +2000,15 @@
     syncDashboardPagination();
     refreshDashboardButton.disabled = true;
     refreshDashboardButton.setAttribute("aria-busy", "true");
-    refreshDashboardLabel.textContent = "Refreshing...";
+    refreshDashboardLabel.textContent = refreshChecks
+      ? "Checking connections..."
+      : "Refreshing...";
     dashboardStatus.textContent = "";
     dashboardStatus.classList.add("hidden");
     dashboardStatus.classList.remove("error");
     try {
       const data = await apiRequest(
-        `/admin/api/dashboard?historyPage=${requestedPage}&failedOnly=${historyFailedToggle.checked}`,
+        `/admin/api/dashboard?historyPage=${requestedPage}&failedOnly=${historyFailedToggle.checked}&refreshChecks=${refreshChecks}`,
         { cache: "no-store" },
       );
       if (activeSettingsView !== "dashboard") return;
@@ -2169,7 +2174,11 @@
     }
   }
 
-  refreshDashboardButton.addEventListener("click", () => loadDashboard());
+  refreshDashboardButton.title =
+    "Refresh dashboard and check provider/indexer connections";
+  refreshDashboardButton.addEventListener("click", () =>
+    loadDashboard(dashboardHistoryPage, true),
+  );
   historyPreviousButton.addEventListener("click", () =>
     loadDashboard(dashboardHistoryPage - 1),
   );

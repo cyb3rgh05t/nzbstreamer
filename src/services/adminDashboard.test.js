@@ -185,6 +185,38 @@ test("dashboard includes cached service checks even without a configured backend
   assert.equal(global.fetch.mock.calls.length, 0);
 });
 
+test("manual dashboard refresh checks services before returning the updated snapshot", async (t) => {
+  setup(t);
+  const healthMonitor = require("./healthMonitor");
+  const services = [{
+    id: "newznab:01",
+    kind: "indexer",
+    name: "Indexer A",
+    status: "healthy",
+    message: "Connection verified.",
+    checkedAt: new Date().toISOString(),
+  }];
+  t.mock.method(healthMonitor, "checkNow", async () => {});
+  t.mock.method(healthMonitor, "getSnapshot", () => services);
+  t.mock.method(global, "fetch", async (url) => Response.json(fixture(url)));
+
+  const result = await getDashboard({ refreshChecks: true });
+
+  assert.equal(healthMonitor.checkNow.mock.callCount(), 1);
+  assert.deepEqual(result.services, services);
+});
+
+test("routine dashboard loads do not start extra service checks", async (t) => {
+  setup(t);
+  const healthMonitor = require("./healthMonitor");
+  t.mock.method(healthMonitor, "checkNow", async () => {});
+  t.mock.method(global, "fetch", async (url) => Response.json(fixture(url)));
+
+  await getDashboard();
+
+  assert.equal(healthMonitor.checkNow.mock.callCount(), 0);
+});
+
 test("partial failures retain cache and history without pretending queue is empty", async (t) => {
   setup(t);
   t.mock.method(console, "error", () => {});

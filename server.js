@@ -537,6 +537,14 @@ adminApiRouter.get("/dashboard", async (req, res) => {
     res.status(400).json({ error: "failedOnly must be true or false." });
     return;
   }
+  if (
+    req.query.refreshChecks !== undefined &&
+    req.query.refreshChecks !== "true" &&
+    req.query.refreshChecks !== "false"
+  ) {
+    res.status(400).json({ error: "refreshChecks must be true or false." });
+    return;
+  }
   const page = req.query.historyPage ?? "1";
   const historyPage =
     typeof page === "string" && /^[1-9]\d*$/.test(page) ? Number(page) : NaN;
@@ -556,6 +564,7 @@ adminApiRouter.get("/dashboard", async (req, res) => {
       await getDashboard({
         historyPage,
         failedOnly: req.query.failedOnly === "true",
+        refreshChecks: req.query.refreshChecks === "true",
       }),
     );
   } catch (error) {

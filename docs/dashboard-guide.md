@@ -24,10 +24,11 @@ Nach der Anmeldung startet die Admin-Oberflaeche im Dashboard. Die Reihenfolge i
 6. Download queue.
 7. Recent history mit Seitenwechsel.
 
-Das Dashboard startet keine Downloads, setzt keine Providerzaehler zurueck und
-aendert keine Einstellungen. Refresh fragt lediglich die aktuellen Daten erneut
-ab. Eine ausdruecklich bestaetigte Ausnahme ist **Clear history**: Diese Aktion
-loescht History-Eintraege, behaelt aber virtuelle Dateien.
+Das Dashboard startet keine Downloads und setzt keine Providerzaehler zurueck.
+Der manuelle **Refresh** prueft zusaetzlich die konfigurierten Provider und
+Indexer sofort erneut; dabei koennen externe API-Anfragen entstehen. Eine
+ausdruecklich bestaetigte Ausnahme ist **Clear history**: Diese Aktion loescht
+History-Eintraege, behaelt aber virtuelle Dateien.
 
 ### Aktualisierung
 
@@ -38,8 +39,13 @@ loescht History-Eintraege, behaelt aber virtuelle Dateien.
   Nach der Rueckkehr kann es bis zum naechsten Intervall dauern.
 - Beim Wechsel in einen anderen Admin-Bereich stoppt das Dashboard-Polling.
 - Refresh loest eine manuelle Abfrage aus. Waehrenddessen ist der Button
-  deaktiviert und zeigt `Refreshing...`; sein Symbol dreht sich, sofern reduzierte
-  Bewegung nicht aktiviert ist. Es erscheint keine separate Ladezeile.
+  deaktiviert und zeigt `Checking connections...`, bis der manuelle Provider-
+  und Indexer-Check sowie das Dashboard-Laden abgeschlossen sind. Sein Symbol
+  dreht sich, sofern reduzierte Bewegung nicht aktiviert ist.
+- Nur der manuelle Button startet den sofortigen Verbindungscheck. Die
+  automatischen 15-Sekunden-Abfragen und History-Seitenwechsel verwenden den
+  zuletzt gespeicherten Status. Ein bereits laufender Hintergrundcheck wird
+  wiederverwendet statt parallel doppelt gestartet.
 - Es gibt keine parallelen Dashboard-Ladevorgaenge im selben UI.
 - Die ausgewaehlte History-Seite bleibt beim Aktualisieren erhalten.
 
