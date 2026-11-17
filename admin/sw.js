@@ -1,4 +1,4 @@
-const CACHE_NAME = "nzbstreamer-admin-v10";
+const CACHE_NAME = "nzbstreamer-admin-v11";
 const ASSETS = [
   "./",
   "./index.html",
@@ -37,6 +37,7 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (!url.pathname.startsWith(scopePath)) return;
   if (event.request.method !== "GET") return;
+  if (url.pathname.slice(scopePath.length).startsWith("api/")) return;
 
   const pathname = url.pathname;
   const isAppShell =

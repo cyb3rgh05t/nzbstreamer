@@ -188,14 +188,16 @@ test("dashboard includes cached service checks even without a configured backend
 test("manual dashboard refresh checks services before returning the updated snapshot", async (t) => {
   setup(t);
   const healthMonitor = require("./healthMonitor");
-  const services = [{
-    id: "newznab:01",
-    kind: "indexer",
-    name: "Indexer A",
-    status: "healthy",
-    message: "Connection verified.",
-    checkedAt: new Date().toISOString(),
-  }];
+  const services = [
+    {
+      id: "newznab:01",
+      kind: "indexer",
+      name: "Indexer A",
+      status: "healthy",
+      message: "Connection verified.",
+      checkedAt: new Date().toISOString(),
+    },
+  ];
   t.mock.method(healthMonitor, "checkNow", async () => {});
   t.mock.method(healthMonitor, "getSnapshot", () => services);
   t.mock.method(global, "fetch", async (url) => Response.json(fixture(url)));

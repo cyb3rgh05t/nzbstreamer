@@ -3909,7 +3909,11 @@ async function streamHandler(req, res) {
               ? item
               : annotateNzbResult(item, 0);
           if (
-            !releaseMatchesEpisode(annotated, Number(seasonNum), Number(episodeNum))
+            !releaseMatchesEpisode(
+              annotated,
+              Number(seasonNum),
+              Number(episodeNum),
+            )
           )
             return false;
         }
@@ -4000,10 +4004,7 @@ async function streamHandler(req, res) {
           Number.isFinite(seasonNum) &&
           Number.isFinite(episodeNum)
         ) {
-          if (
-            !Number.isFinite(annotated?.season) &&
-            !annotated?.complete
-          ) {
+          if (!Number.isFinite(annotated?.season) && !annotated?.complete) {
             if (isNewznabDebugEnabled()) {
               console.log(
                 `${INDEXER_LOG_PREFIX} Strict text match failed (missing season/episode)`,
@@ -4018,7 +4019,11 @@ async function streamHandler(req, res) {
             return false;
           }
           if (
-            !releaseMatchesEpisode(annotated, Number(seasonNum), Number(episodeNum))
+            !releaseMatchesEpisode(
+              annotated,
+              Number(seasonNum),
+              Number(episodeNum),
+            )
           ) {
             if (isNewznabDebugEnabled()) {
               console.log(
